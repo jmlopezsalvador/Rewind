@@ -51,6 +51,10 @@ data class Performance(
     /** Dispara el efecto; solo cuenta en ARMED (un segundo disparo no hace nada). */
     fun trigger(now: Instant): Performance = if (triggeredAt == null) copy(triggeredAt = now) else this
 
+    /** Cambia N en directo (cuadrícula). Solo vale mientras se espera el disparo (ARMED). */
+    fun withMinutes(n: Int): Performance =
+        if (triggeredAt != null) this else copy(config = config.copy(extraMinutes = n.coerceIn(1, 999)))
+
     /** Vuelve a la espera (2 dedos arriba): el offset se recalcula y se cancela cualquier animación. */
     fun reset(): Performance = copy(triggeredAt = null)
 

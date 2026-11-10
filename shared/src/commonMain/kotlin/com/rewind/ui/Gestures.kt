@@ -11,14 +11,14 @@ import kotlin.math.max
 
 /**
  * Gestos de la Performance Screen (SPEC 3 y CU-11):
- * - un toque (un solo dedo, corto y sin moverse) → [onTap];
+ * - un toque (un solo dedo, corto y sin moverse) → [onTap] con la casilla (columna, fila) de la pantalla en 3×3;
  * - deslizar con dos dedos hacia abajo/arriba → [onTwoFingerSwipe] (true = hacia arriba);
  * - pulsación larga con un dedo → [onLongPress] con la casilla (columna, fila) de la pantalla dividida en 3×3
  *   (0,0 = arriba izquierda; 2,0 = arriba derecha). Alternativa a los dos dedos para trabajar en el emulador.
  * Un gesto de dos dedos o una pulsación larga nunca cuentan como toque, así no disparan el efecto.
  */
 suspend fun PointerInputScope.detectRewindGestures(
-    onTap: () -> Unit,
+    onTap: (col: Int, row: Int) -> Unit,
     onTwoFingerSwipe: (up: Boolean) -> Unit,
     onLongPress: (col: Int, row: Int) -> Unit = { _, _ -> },
 ) {
@@ -26,6 +26,8 @@ suspend fun PointerInputScope.detectRewindGestures(
     val tapSlop = 24.dp.toPx()
     val tapMaxMs = 500L
     val longPressMs = 600L
+    fun cellCol(x: Float) = (x / (size.width / 3f)).toInt().coerceIn(0, 2)
+    fun cellRow(y: Float) = (y / (size.height / 3f)).toInt().coerceIn(0, 2)
     awaitEachGesture {
         val first = awaitFirstDown(requireUnconsumed = false)
         val startPos = first.position
@@ -48,9 +50,7 @@ suspend fun PointerInputScope.detectRewindGestures(
             if (event == null) {
                 // Pasó el tiempo con el dedo quieto: pulsación larga.
                 longFired = true
-                val col = (startPos.x / (size.width / 3f)).toInt().coerceIn(0, 2)
-                val row = (startPos.y / (size.height / 3f)).toInt().coerceIn(0, 2)
-                onLongPress(col, row)
+                onLongPress(cellCol(startPos.x), cellRow(startPos.y))
                 continue
             }
             val pressed = event.changes.filter { it.pressed }
@@ -70,6 +70,8 @@ suspend fun PointerInputScope.detectRewindGestures(
             }
             event.changes.forEach { it.consume() }
         } while (event == null || event.changes.any { it.pressed })
-        if (maxPointers == 1 && !moved && !longFired && lastTime - startTime <= tapMaxMs) onTap()
+        if (maxPointers == 1 && !moved && !longFired && lastTime - startTime <= tapMaxMs) {
+            onTap(cellCol(startPos.x), cellRow(startPos.y))
+        }
     }
 }

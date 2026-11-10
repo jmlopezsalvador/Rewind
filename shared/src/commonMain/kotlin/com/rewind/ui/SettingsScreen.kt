@@ -95,6 +95,17 @@ fun SettingsScreen(
             )
         }
 
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Fijar los minutos pulsando en directo", color = MaterialTheme.colorScheme.onBackground)
+                Text(
+                    "Pulsa N veces la casilla izquierda-centro de la pantalla y espera 1,5 s. Esa casilla deja de disparar el efecto.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                )
+            }
+            Switch(s.gridInput, { s = s.copy(gridInput = it) })
+        }
+
         Section("Formato de hora") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(

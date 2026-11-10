@@ -108,3 +108,38 @@ class WakeAndAlertTest {
         assertEquals(0L, millisToMinuteAlert(at("2026-01-01T10:00:55Z"), 10))
     }
 }
+
+class GridInputTest {
+    private fun at(s: String) = Instant.parse(s)
+
+    @Test fun countsTapsAndConfirmsAfterPause() {
+        var g = GridInput()
+        g = g.tap(at("2026-01-01T10:00:00.000Z"))
+        g = g.tap(at("2026-01-01T10:00:00.400Z"))
+        g = g.tap(at("2026-01-01T10:00:00.800Z"))
+        assertEquals(3, g.count)
+        assertEquals(1_500L, g.remainingMs(at("2026-01-01T10:00:00.800Z")))
+        assertEquals(700L, g.remainingMs(at("2026-01-01T10:00:01.600Z")))
+        assertEquals(0L, g.remainingMs(at("2026-01-01T10:00:02.300Z")))
+    }
+
+    @Test fun emptyHasNothingToConfirm() {
+        assertEquals(0L, GridInput().remainingMs(at("2026-01-01T10:00:00Z")))
+    }
+
+    @Test fun countIsCappedAtMax() {
+        var g = GridInput(count = GridInput.MAX)
+        g = g.tap(at("2026-01-01T10:00:00Z"))
+        assertEquals(GridInput.MAX, g.count)
+    }
+
+    @Test fun withMinutesChangesOffsetOnlyWhileArmed() {
+        val armed = Performance(PerformanceConfig(extraMinutes = 3)).withMinutes(7)
+        assertEquals(7, armed.startOffset)
+        assertEquals(PerformanceConfig(extraMinutes = 3).extraMinutes, armed.reset().withMinutes(3).config.extraMinutes)
+        val fired = armed.trigger(at("2026-01-01T10:00:00Z"))
+        assertEquals(7, fired.withMinutes(2).startOffset) // ya disparado: no cambia
+        assertEquals(999, Performance(PerformanceConfig()).withMinutes(5000).config.extraMinutes)
+        assertEquals(1, Performance(PerformanceConfig()).withMinutes(0).config.extraMinutes)
+    }
+}

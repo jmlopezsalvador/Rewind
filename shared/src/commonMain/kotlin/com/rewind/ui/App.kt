@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.rewind.time.GridInput
 import com.rewind.time.Performance
 import com.rewind.time.Phase
 import com.rewind.time.TimeSource
@@ -106,7 +107,19 @@ fun PerformanceScreen(
     var wake by remember { mutableFloatStateOf(if (settings.alwaysOn) 0f else 1f) }
     var alertOn by remember { mutableStateOf(false) }
 
+    var grid by remember(settings) { mutableStateOf(GridInput()) }
     val vibrate = rememberVibrate()
+    // Cuadrícula (CU-06): cuando pasa la pausa sin pulsar, el número contado queda fijado como N.
+    LaunchedEffect(grid) {
+        if (grid.lastTapAt != null) {
+            delay(grid.remainingMs(source.now()))
+            if (performance.triggeredAt == null) {
+                performance = performance.withMinutes(grid.count)
+                if (settings.trigger == Trigger.TAP_VIBRATE) vibrate() // confirmación al mago
+            }
+            grid = GridInput()
+        }
+    }
     val fire = rememberUpdatedState {
         if (performance.triggeredAt == null) { // el disparo solo cuenta en ARMED
             performance = performance.trigger(source.now())
@@ -140,14 +153,21 @@ fun PerformanceScreen(
         }
     }
 
+    // Reiniciar vuelve al N de Ajustes (se descarta el que se fijó en directo) y borra pulsaciones pendientes.
+    val resetAll = { performance = Performance(settings.toConfig()); grid = GridInput() }
     val gestures = Modifier.pointerInput(Unit) {
         detectRewindGestures(
-            onTap = { if (settings.trigger != Trigger.PROXIMITY) fire.value() },
-            onTwoFingerSwipe = { up -> if (up) performance = performance.reset() else onOpenSettings() },
+            onTap = { col, row ->
+                if (settings.gridInput && col == 0 && row == 1) {
+                    // casilla izquierda-centro: cuenta pulsaciones en vez de disparar (solo mientras se espera el disparo)
+                    if (performance.triggeredAt == null) grid = grid.tap(source.now())
+                } else if (settings.trigger != Trigger.PROXIMITY) fire.value()
+            },
+            onTwoFingerSwipe = { up -> if (up) resetAll() else onOpenSettings() },
             // Alternativa para el emulador: pulsación larga arriba a la derecha = ajustes, arriba a la izquierda = reset.
             onLongPress = { col, row ->
                 if (row == 0 && col == 2) onOpenSettings()
-                else if (row == 0 && col == 0) performance = performance.reset()
+                else if (row == 0 && col == 0) resetAll()
             },
         )
     }
