@@ -11,16 +11,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
+import com.rewind.time.Performance
+import com.rewind.time.Phase
 import com.rewind.time.TimeSource
-import com.rewind.time.displayTime
 import com.rewind.time.formatTime
 import com.rewind.time.local
 import com.rewind.time.millisToNextMinute
-import com.rewind.time.offsetMinutes
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -33,20 +36,31 @@ fun RewindRoot(store: SettingsStore) {
     }
 }
 
-/** Pantalla principal (provisional): reloj falso hora real + offset, sincronizado con el cambio de minuto real. */
+/**
+ * Pantalla principal (provisional): reloj falso hora real + offset. Un toque dispara el efecto (solo en ARMED);
+ * el tick se programa con el reloj del sistema (sin derivar) y por fotogramas mientras hay retardo/animación.
+ */
 @Composable
 fun PerformanceScreen(settings: AppSettings, source: TimeSource = TimeSource { Clock.System.now() }) {
     SystemBarsEffect(dark = true)
+    var performance by remember(settings) { mutableStateOf(Performance(settings.toConfig())) }
     var shown by remember { mutableStateOf("") }
-    LaunchedEffect(settings) {
-        val offset = offsetMinutes(settings.direction, settings.extraMinutes)
+    LaunchedEffect(performance) {
         while (true) {
             val now = source.now()
-            shown = formatTime(displayTime(now, offset).local(TimeZone.currentSystemDefault()), settings.timeFormat)
-            delay(millisToNextMinute(now)) // se recalcula con el reloj del sistema: no deriva
+            shown = formatTime(performance.displayAt(now).local(TimeZone.currentSystemDefault()), settings.timeFormat)
+            when (performance.phaseAt(now)) {
+                Phase.ANIMATING -> withFrameMillis { }
+                Phase.DELAY -> delay(minOf(16L, millisToNextMinute(now)))
+                else -> delay(millisToNextMinute(now))
+            }
         }
     }
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier.fillMaxSize().background(Color.Black)
+            .pointerInput(Unit) { detectTapGestures { performance = performance.trigger(source.now()) } },
+        contentAlignment = Alignment.Center,
+    ) {
         Text(shown, color = Color.White, fontSize = 96.sp)
     }
 }

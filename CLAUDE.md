@@ -24,7 +24,7 @@ real. No toca el reloj del sistema. Gestos ocultos: 2 dedos ↓ = Settings, 2 de
 - Fase 1 (MVP): capturas A/B de la galería, editor de hora/fecha, Blend Images, offset, disparadores, animación, persistencia.
 - Fase 2: cuadrícula invisible para N en directo, entrenamiento, alerta de minuto, Always On/Auto Wake, botones de volumen.
 - Máquina de estados: IDLE → (GRID_INPUT) → ARMED → DELAY → ANIMATING → SYNCED_HOLD (SPEC §6).
-- Lógica temporal 100 % testeable con reloj inyectable (`TimeSource`); código en `shared/.../time/`.
+- Lógica temporal 100 % testeable con reloj inyectable; código en `shared/.../time/` (`TimeLogic.kt`, `Performance.kt` = máquina de estados ARMED→DELAY→ANIMATING→SYNCED_HOLD como función pura de (estado, ahora)). Con N grande la animación se acelera (máx. 20 s, provisional, Q4).
 - Preguntas abiertas Q1–Q4 en `SPEC.md` §10.
 
 ## Arquitectura (resumen de `ARQUITECTURA.md`)
