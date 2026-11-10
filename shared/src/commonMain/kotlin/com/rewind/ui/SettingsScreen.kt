@@ -34,7 +34,18 @@ import com.rewind.time.TimeFormat
 /** Ajustes de la actuación (SPEC 5, fase 1). Display Settings (capturas, editor, blend) llegará aparte. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(initial: AppSettings, onSave: (AppSettings) -> Unit, onClose: () -> Unit) {
+fun SettingsScreen(
+    initial: AppSettings,
+    onSave: (AppSettings) -> Unit,
+    onClose: () -> Unit,
+    hasScreenshot: Boolean,
+    hasDragged: Boolean,
+    onScreenshotPicked: (ByteArray) -> Unit,
+    onDraggedPicked: (ByteArray) -> Unit,
+    onClearImages: () -> Unit,
+) {
+    val pickScreenshot = rememberImagePicker(onScreenshotPicked)
+    val pickDragged = rememberImagePicker(onDraggedPicked)
     var s by remember { mutableStateOf(initial) }
     var minutesText by remember { mutableStateOf(initial.extraMinutes.toString()) }
 
@@ -44,6 +55,18 @@ fun SettingsScreen(initial: AppSettings, onSave: (AppSettings) -> Unit, onClose:
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Ajustes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+
+        Section("Pantalla de bloqueo (las imágenes se guardan al elegirlas)") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(pickScreenshot, Modifier.weight(1f)) {
+                    Text(if (hasScreenshot) "Captura A ✓" else "Elegir captura A")
+                }
+                OutlinedButton(pickDragged, Modifier.weight(1f)) {
+                    Text(if (hasDragged) "Sin reloj B ✓" else "Elegir sin reloj B")
+                }
+            }
+            if (hasScreenshot || hasDragged) OutlinedButton(onClearImages) { Text("Quitar imágenes") }
+        }
 
         Section("Dirección") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

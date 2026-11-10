@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -41,4 +42,28 @@ class SharedPrefsStore(context: Context) : KeyValueStore {
     override fun putString(key: String, value: String) = p.edit().putString(key, value).apply()
     override fun putBoolean(key: String, value: Boolean) = p.edit().putBoolean(key, value).apply()
     override fun putLong(key: String, value: Long) = p.edit().putLong(key, value).apply()
+}
+
+class FileImageStore(private val dir: java.io.File) : ImageStore {
+    private fun file(name: String) = java.io.File(dir, "$name.img")
+    override fun save(name: String, bytes: ByteArray) { file(name).writeBytes(bytes) }
+    override fun load(name: String): ByteArray? = file(name).takeIf { it.exists() }?.readBytes()
+    override fun delete(name: String) { file(name).delete() }
+}
+
+actual fun decodeImage(bytes: ByteArray): androidx.compose.ui.graphics.ImageBitmap? =
+    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+
+@Composable
+actual fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val current = androidx.compose.runtime.rememberUpdatedState(onPicked)
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.openInputStream(uri)?.use { current.value(it.readBytes()) }
+        }
+    }
+    return { launcher.launch("image/*") }
 }
