@@ -77,10 +77,8 @@ private fun cellInfo(col: Int, row: Int, gridInput: Boolean, pending: Int, minut
         "Disparo",
         when (trigger) {
             Trigger.TAP -> "toque en cualquier casilla libre"
-            Trigger.TAP_VIBRATE -> "toque en cualquier casilla libre
-(y vibra)"
-            Trigger.PROXIMITY -> "sensor de proximidad
-(los toques no disparan)"
+            Trigger.TAP_VIBRATE -> "toque en cualquier casilla libre\n(y vibra)"
+            Trigger.PROXIMITY -> "sensor de proximidad\n(los toques no disparan)"
         },
         false,
     )
