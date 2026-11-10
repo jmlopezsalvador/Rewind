@@ -109,36 +109,51 @@ class WakeAndAlertTest {
     }
 }
 
-class GridInputTest {
+class NumberEntryTest {
     private fun at(s: String) = Instant.parse(s)
+    private val t0 = at("2026-01-01T10:00:00Z")
 
-    @Test fun countsTapsAndConfirmsAfterPause() {
-        var g = GridInput()
-        g = g.tap(at("2026-01-01T10:00:00.000Z"))
-        g = g.tap(at("2026-01-01T10:00:00.400Z"))
-        g = g.tap(at("2026-01-01T10:00:00.800Z"))
-        assertEquals(3, g.count)
-        assertEquals(1_500L, g.remainingMs(at("2026-01-01T10:00:00.800Z")))
-        assertEquals(700L, g.remainingMs(at("2026-01-01T10:00:01.600Z")))
-        assertEquals(0L, g.remainingMs(at("2026-01-01T10:00:02.300Z")))
+    @Test fun twoDigitsCompleteAndGiveValue() {
+        var e = NumberEntry(lastInputAt = t0)
+        e = e.press(1, t0)
+        assertEquals(false, e.isComplete)
+        e = e.press(7, t0)
+        assertEquals(true, e.isComplete)
+        assertEquals(17, e.value)
     }
 
-    @Test fun emptyHasNothingToConfirm() {
-        assertEquals(0L, GridInput().remainingMs(at("2026-01-01T10:00:00Z")))
+    @Test fun leadingZeroGivesSingleDigitValue() {
+        val e = NumberEntry(lastInputAt = t0).press(0, t0).press(7, t0)
+        assertEquals(7, e.value)
+        assertEquals(0, NumberEntry(lastInputAt = t0).press(0, t0).press(0, t0).value)
     }
 
-    @Test fun countIsCappedAtMax() {
-        var g = GridInput(count = GridInput.MAX)
-        g = g.tap(at("2026-01-01T10:00:00Z"))
-        assertEquals(GridInput.MAX, g.count)
+    @Test fun closesByItselfAfterInactivity() {
+        val e = NumberEntry(lastInputAt = t0).press(4, at("2026-01-01T10:00:03Z"))
+        assertEquals(10_000L, e.remainingMs(at("2026-01-01T10:00:03Z")))
+        assertEquals(4_000L, e.remainingMs(at("2026-01-01T10:00:09Z")))
+        assertEquals(0L, e.remainingMs(at("2026-01-01T10:00:14Z")))
+    }
+
+    @Test fun keypadLayoutIsPhoneLikeWithZeroRow() {
+        assertEquals(1, keypadDigitAt(0.1f, 0.1f))
+        assertEquals(2, keypadDigitAt(0.5f, 0.1f))
+        assertEquals(3, keypadDigitAt(0.9f, 0.1f))
+        assertEquals(5, keypadDigitAt(0.5f, 0.4f))
+        assertEquals(7, keypadDigitAt(0.1f, 0.6f))
+        assertEquals(9, keypadDigitAt(0.9f, 0.7f))
+        assertEquals(0, keypadDigitAt(0.1f, 0.9f))
+        assertEquals(0, keypadDigitAt(0.5f, 0.99f))
+        assertEquals(0, keypadDigitAt(1.0f, 1.0f)) // bordes: no se salen del teclado
+        assertEquals(1, keypadDigitAt(0f, 0f))
     }
 
     @Test fun withMinutesChangesOffsetOnlyWhileArmed() {
         val armed = Performance(PerformanceConfig(extraMinutes = 3)).withMinutes(7)
         assertEquals(7, armed.startOffset)
-        assertEquals(PerformanceConfig(extraMinutes = 3).extraMinutes, armed.reset().withMinutes(3).config.extraMinutes)
         val fired = armed.trigger(at("2026-01-01T10:00:00Z"))
         assertEquals(7, fired.withMinutes(2).startOffset) // ya disparado: no cambia
+        assertEquals(99, Performance(PerformanceConfig()).withMinutes(99).config.extraMinutes)
         assertEquals(999, Performance(PerformanceConfig()).withMinutes(5000).config.extraMinutes)
         assertEquals(1, Performance(PerformanceConfig()).withMinutes(0).config.extraMinutes)
     }

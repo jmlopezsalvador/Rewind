@@ -20,12 +20,11 @@ import com.rewind.time.Trigger
 /**
  * Capa de ayuda (Ajustes → "Ver controles de pantalla"): dibuja la pantalla dividida en 3×3 y rotula la función de
  * cada casilla. No captura toques: los gestos pasan a través y siguen funcionando igual.
- * Las casillas con función van resaltadas. Aquí irán también las futuras (números, volumen...).
+ * Las casillas con función van resaltadas. Al añadir una función por casilla, rotularla en [cellInfo].
  */
 @Composable
 fun ControlsOverlay(
-    gridInputEnabled: Boolean,
-    pendingTaps: Int,
+    numberEntryEnabled: Boolean,
     minutes: Int,
     trigger: Trigger,
     modifier: Modifier = Modifier,
@@ -34,7 +33,7 @@ fun ControlsOverlay(
         for (row in 0..2) {
             Row(Modifier.weight(1f)) {
                 for (col in 0..2) {
-                    val (title, detail, active) = cellInfo(col, row, gridInputEnabled, pendingTaps, minutes, trigger)
+                    val (title, detail, active) = cellInfo(col, row, numberEntryEnabled, minutes, trigger)
                     Box(
                         Modifier.weight(1f).fillMaxSize()
                             .background(if (active) Color(0x40FFC107) else Color(0x14000000))
@@ -61,24 +60,21 @@ fun ControlsOverlay(
 
 private data class CellInfo(val title: String, val detail: String, val active: Boolean)
 
-private fun cellInfo(col: Int, row: Int, gridInput: Boolean, pending: Int, minutes: Int, trigger: Trigger): CellInfo = when {
+private fun cellInfo(col: Int, row: Int, numberEntry: Boolean, minutes: Int, trigger: Trigger): CellInfo = when {
     col == 0 && row == 0 -> CellInfo("Reiniciar", "pulsación larga", true)
     col == 2 && row == 0 -> CellInfo("Ajustes", "pulsación larga", true)
-    col == 0 && row == 1 -> if (gridInput) {
-        CellInfo(
-            "Minutos extra",
-            "pulsa N veces y espera 1,5 s\nN = $minutes" + if (pending > 0) " · contando: $pending" else "",
-            true,
-        )
+    col == 0 && row == 2 -> if (numberEntry) {
+        CellInfo("Registrar número", "pulsación larga y 2 cifras\n(07, 17...)", true)
     } else {
-        CellInfo("Minutos extra", "desactivado\n(actívalo en Ajustes)", false)
+        CellInfo("Registrar número", "desactivado\n(actívalo en Ajustes)", false)
     }
     col == 1 && row == 1 -> CellInfo(
-        "Disparo",
+        "Disparo · N = $minutes",
         when (trigger) {
             Trigger.TAP -> "toque en cualquier casilla libre"
             Trigger.TAP_VIBRATE -> "toque en cualquier casilla libre\n(y vibra)"
             Trigger.PROXIMITY -> "sensor de proximidad\n(los toques no disparan)"
+            Trigger.VOLUME -> "tecla de volumen\n(los toques no disparan)"
         },
         false,
     )

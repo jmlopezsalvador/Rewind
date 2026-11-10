@@ -105,3 +105,23 @@ actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit) {
         onDispose { manager.unregisterListener(listener) }
     }
 }
+
+/**
+ * Puente entre la actividad (que recibe las teclas) y la interfaz Compose. Mientras haya un [handler] registrado,
+ * `MainActivity` le pasa las pulsaciones de volumen y las consume (el sistema no cambia el volumen).
+ */
+object VolumeKeyBridge {
+    @Volatile
+    var handler: (() -> Unit)? = null
+}
+
+actual fun platformSupportsVolumeKeys(): Boolean = true
+
+@Composable
+actual fun VolumeKeyEffect(enabled: Boolean, onPress: () -> Unit) {
+    val current = androidx.compose.runtime.rememberUpdatedState(onPress)
+    DisposableEffect(enabled) {
+        if (enabled) VolumeKeyBridge.handler = { current.value() }
+        onDispose { VolumeKeyBridge.handler = null }
+    }
+}

@@ -34,3 +34,13 @@ expect fun rememberVibrate(): () -> Unit
  */
 @Composable
 expect fun ProximityEffect(enabled: Boolean, onNear: () -> Unit)
+
+/** true si la plataforma permite usar las teclas de volumen como disparador (Android sí; iOS no ofrece forma fiable). */
+expect fun platformSupportsVolumeKeys(): Boolean
+
+/**
+ * Mientras [enabled], las pulsaciones de las teclas de volumen llaman a [onPress] y no cambian el volumen
+ * ni muestran el aviso del sistema. En plataformas sin soporte no hace nada.
+ */
+@Composable
+expect fun VolumeKeyEffect(enabled: Boolean, onPress: () -> Unit)

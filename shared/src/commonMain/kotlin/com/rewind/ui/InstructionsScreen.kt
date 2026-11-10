@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Página de instrucciones para el usuario (ver [INSTRUCTIONS]). */
+/** Página de instrucciones para el usuario (ver [instructions]). */
 @Composable
 fun InstructionsScreen(onClose: () -> Unit) {
     val scroll = rememberScrollState()
@@ -26,7 +26,7 @@ fun InstructionsScreen(onClose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("Instrucciones", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
-            INSTRUCTIONS.forEach { section ->
+            instructions(platformSupportsVolumeKeys()).forEach { section ->
                 Text(
                     section.title,
                     style = MaterialTheme.typography.titleMedium,

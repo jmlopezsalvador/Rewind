@@ -1,6 +1,7 @@
 package com.rewind.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -106,13 +107,29 @@ fun SettingsScreen(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Fijar los minutos pulsando en directo", color = MaterialTheme.colorScheme.onBackground)
+                Text("Registrar número en directo", color = MaterialTheme.colorScheme.onBackground)
                 Text(
-                    "Pulsa N veces la casilla izquierda-centro de la pantalla y espera 1,5 s. Esa casilla deja de disparar el efecto.",
+                    "Mantén pulsada la casilla inferior izquierda; el móvil vibra y puedes teclear 2 cifras (07, 17...) en una " +
+                        "cuadrícula 3×3 + 0. Mientras tanto el resto de la pantalla no responde. Desactívalo si temes pulsar sin querer.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 )
             }
-            Switch(s.gridInput, { s = s.copy(gridInput = it) })
+            Switch(s.numberEntry, { s = s.copy(numberEntry = it) })
+        }
+        if (s.numberEntry) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Teclado visible en pantalla", Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
+                Switch(s.keypadVisible, { s = s.copy(keypadVisible = it) })
+            }
+            if (s.keypadVisible) {
+                Section("Transparencia del teclado (${(s.keypadOpacity * 100).toInt()} % opaco)") {
+                    Slider(
+                        value = s.keypadOpacity,
+                        onValueChange = { s = s.copy(keypadOpacity = it.coerceIn(0.1f, 0.9f)) },
+                        valueRange = 0.1f..0.9f,
+                    )
+                }
+            }
         }
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -156,9 +173,13 @@ fun SettingsScreen(
         }
 
         Section("Disparador") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Trigger.TAP to "Toque", Trigger.TAP_VIBRATE to "Toque + vibración", Trigger.PROXIMITY to "Proximidad")
-                    .forEach { (v, label) -> FilterChip(s.trigger == v, { s = s.copy(trigger = v) }, { Text(label) }) }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                buildList {
+                    add(Trigger.TAP to "Toque")
+                    add(Trigger.TAP_VIBRATE to "Toque + vibración")
+                    add(Trigger.PROXIMITY to "Proximidad")
+                    if (platformSupportsVolumeKeys()) add(Trigger.VOLUME to "Volumen")
+                }.forEach { (v, label) -> FilterChip(s.trigger == v, { s = s.copy(trigger = v) }, { Text(label) }) }
             }
         }
 

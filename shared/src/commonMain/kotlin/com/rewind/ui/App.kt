@@ -27,7 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.rewind.time.GridInput
+import com.rewind.time.NumberEntry
 import com.rewind.time.Performance
 import com.rewind.time.Phase
 import com.rewind.time.TimeSource
@@ -35,6 +35,7 @@ import com.rewind.time.Trigger
 import com.rewind.time.formatDate
 import com.rewind.time.formatTime
 import com.rewind.time.isMinuteAlertActive
+import com.rewind.time.keypadDigitAt
 import com.rewind.time.local
 import com.rewind.time.millisToMinuteAlert
 import com.rewind.time.millisToNextMinute
@@ -87,9 +88,11 @@ fun RewindRoot(store: SettingsStore, images: ImageStore) {
 
 /**
  * Pantalla principal: réplica de la pantalla de bloqueo con el reloj falso (hora real + offset).
- * - Disparo (solo en ARMED): toque, toque con vibración o sensor de proximidad (según los ajustes).
+ * - Disparo (solo en ARMED): toque, toque con vibración, proximidad o tecla de volumen (según los ajustes).
  * - Always On: la pantalla parece apagada hasta el disparo; Auto Wake la "enciende" con un fundido.
  * - Alerta de minuto: brillo sutil abajo cuando falta poco para el cambio de minuto real.
+ * - Registro de número: pulsación larga abajo a la izquierda → teclado 3×3 + 0, dos cifras, vibra al entrar y al registrar.
+ *   Mientras dura, el resto de la pantalla no responde.
  * - El tick se programa con el reloj del sistema (sin derivar) y por fotogramas durante retardo/animación.
  */
 @Composable
@@ -106,22 +109,12 @@ fun PerformanceScreen(
     var dateText by remember { mutableStateOf("") }
     var wake by remember { mutableFloatStateOf(if (settings.alwaysOn) 0f else 1f) }
     var alertOn by remember { mutableStateOf(false) }
+    var entry by remember(settings) { mutableStateOf<NumberEntry?>(null) } // modo de registro de número
 
-    var grid by remember(settings) { mutableStateOf(GridInput()) }
     val vibrate = rememberVibrate()
-    // Cuadrícula (CU-06): cuando pasa la pausa sin pulsar, el número contado queda fijado como N.
-    LaunchedEffect(grid) {
-        if (grid.lastTapAt != null) {
-            delay(grid.remainingMs(source.now()))
-            if (performance.triggeredAt == null) {
-                performance = performance.withMinutes(grid.count)
-                if (settings.trigger == Trigger.TAP_VIBRATE) vibrate() // confirmación al mago
-            }
-            grid = GridInput()
-        }
-    }
     val fire = rememberUpdatedState {
-        if (performance.triggeredAt == null) { // el disparo solo cuenta en ARMED
+        // el disparo solo cuenta en ARMED y fuera del modo de registro
+        if (performance.triggeredAt == null && entry == null) {
             performance = performance.trigger(source.now())
             if (settings.trigger == Trigger.TAP_VIBRATE) vibrate()
         }
@@ -131,6 +124,17 @@ fun PerformanceScreen(
         enabled = settings.trigger == Trigger.PROXIMITY && performance.triggeredAt == null,
         onNear = { fire.value() },
     )
+    // Con el disparador de volumen, las teclas no tocan el volumen del sistema mientras se está en esta pantalla.
+    VolumeKeyEffect(enabled = settings.trigger == Trigger.VOLUME, onPress = { fire.value() })
+
+    // El modo de registro se cierra solo tras unos segundos sin pulsar (seguro por si se entra sin querer).
+    LaunchedEffect(entry) {
+        val e = entry
+        if (e != null) {
+            delay(e.remainingMs(source.now()))
+            entry = null
+        }
+    }
 
     LaunchedEffect(performance, settings) {
         while (true) {
@@ -153,21 +157,41 @@ fun PerformanceScreen(
         }
     }
 
-    // Reiniciar vuelve al N de Ajustes (se descarta el que se fijó en directo) y borra pulsaciones pendientes.
-    val resetAll = { performance = Performance(settings.toConfig()); grid = GridInput() }
+    // Reiniciar vuelve al N de Ajustes (se descarta el registrado en directo) y cierra el modo de registro.
+    val resetAll = { performance = Performance(settings.toConfig()); entry = null }
     val gestures = Modifier.pointerInput(Unit) {
         detectRewindGestures(
-            onTap = { col, row ->
-                if (settings.gridInput && col == 0 && row == 1) {
-                    // casilla izquierda-centro: cuenta pulsaciones en vez de disparar (solo mientras se espera el disparo)
-                    if (performance.triggeredAt == null) grid = grid.tap(source.now())
-                } else if (settings.trigger != Trigger.PROXIMITY) fire.value()
+            onTap = { fx, fy ->
+                val e = entry
+                if (e != null) {
+                    // Modo de registro: solo responde el teclado. Tras la segunda cifra se cierra, se registra y vibra.
+                    val next = e.press(keypadDigitAt(fx, fy), source.now())
+                    if (next.isComplete) {
+                        entry = null
+                        if (next.value > 0) performance = performance.withMinutes(next.value) // 00 = sin cambio
+                        vibrate()
+                    } else {
+                        entry = next
+                    }
+                } else if (settings.trigger == Trigger.TAP || settings.trigger == Trigger.TAP_VIBRATE) {
+                    fire.value()
+                }
             },
-            onTwoFingerSwipe = { up -> if (up) resetAll() else onOpenSettings() },
-            // Alternativa para el emulador: pulsación larga arriba a la derecha = ajustes, arriba a la izquierda = reset.
-            onLongPress = { col, row ->
-                if (row == 0 && col == 2) onOpenSettings()
-                else if (row == 0 && col == 0) resetAll()
+            onTwoFingerSwipe = { up -> if (entry == null) { if (up) resetAll() else onOpenSettings() } },
+            // Pulsación larga: abajo-izquierda entra en el registro de número; arriba-derecha, ajustes; arriba-izquierda, reiniciar.
+            onLongPress = { fx, fy ->
+                val col = cellOf(fx)
+                val row = cellOf(fy)
+                if (entry == null) {
+                    if (settings.numberEntry && col == 0 && row == 2 && performance.triggeredAt == null) {
+                        entry = NumberEntry(lastInputAt = source.now())
+                        vibrate() // avisa de que el modo de registro está activo
+                    } else if (row == 0 && col == 2) {
+                        onOpenSettings()
+                    } else if (row == 0 && col == 0) {
+                        resetAll()
+                    }
+                }
             },
         )
     }
@@ -180,7 +204,7 @@ fun PerformanceScreen(
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
             )
             if (settings.showControls) {
-                ControlsOverlay(settings.gridInput, grid.count, performance.config.extraMinutes, settings.trigger)
+                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger)
             }
         }
     } else {
@@ -204,7 +228,11 @@ fun PerformanceScreen(
                 )
             }
             if (settings.showControls) {
-                ControlsOverlay(settings.gridInput, grid.count, performance.config.extraMinutes, settings.trigger)
+                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger)
+            }
+            val e = entry
+            if (e != null && settings.keypadVisible) {
+                NumberKeypadOverlay(e, settings.keypadOpacity)
             }
         }
     }

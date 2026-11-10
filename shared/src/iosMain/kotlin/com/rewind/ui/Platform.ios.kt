@@ -136,3 +136,11 @@ actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit) {
         }
     }
 }
+
+// En iOS no hay forma oficial de interceptar las teclas de volumen: la opción se descarta en esta plataforma.
+actual fun platformSupportsVolumeKeys(): Boolean = false
+
+@Composable
+actual fun VolumeKeyEffect(enabled: Boolean, onPress: () -> Unit) {
+    // sin soporte
+}

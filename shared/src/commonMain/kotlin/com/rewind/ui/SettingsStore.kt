@@ -31,8 +31,12 @@ data class AppSettings(
     val autoWake: Boolean = false,
     val minuteAlert: Boolean = false,
     val alertSeconds: Int = 10,
-    /** Permite fijar N en directo pulsando varias veces la casilla izquierda-centro de la pantalla. */
-    val gridInput: Boolean = false,
+    /** Permite entrar en el modo de registro de número con una pulsación larga en la casilla inferior izquierda. */
+    val numberEntry: Boolean = false,
+    /** Muestra el teclado en pantalla durante el registro (invisible: la cuadrícula existe pero no se ve). */
+    val keypadVisible: Boolean = false,
+    /** Opacidad (0.1..0.9) del teclado cuando es visible. */
+    val keypadOpacity: Float = 0.35f,
     /** Dibuja encima de la pantalla principal la cuadrícula 3×3 con la función de cada casilla (ayuda). */
     val showControls: Boolean = false,
 ) {
@@ -54,12 +58,15 @@ class SettingsStore(private val prefs: KeyValueStore) {
             ?: AnimationSpeed.REGULAR,
         display = DisplayConfig.decode(prefs.getString("display"))
             ?: DisplayConfig(dateFormat = if (platformLanguage() == "es") DateFormat.ES_LONG else DateFormat.EN_SHORT),
-        trigger = prefs.getString("trigger")?.let { runCatching { Trigger.valueOf(it) }.getOrNull() } ?: Trigger.TAP,
+        trigger = prefs.getString("trigger")?.let { runCatching { Trigger.valueOf(it) }.getOrNull() }
+            ?.takeUnless { it == Trigger.VOLUME && !platformSupportsVolumeKeys() } ?: Trigger.TAP,
         alwaysOn = prefs.getBoolean("alwaysOn", false),
         autoWake = prefs.getBoolean("autoWake", false),
         minuteAlert = prefs.getBoolean("minuteAlert", false),
         alertSeconds = prefs.getLong("alertSeconds", 10).toInt().coerceIn(3, 30),
-        gridInput = prefs.getBoolean("gridInput", false),
+        numberEntry = prefs.getBoolean("numberEntry", false),
+        keypadVisible = prefs.getBoolean("keypadVisible", false),
+        keypadOpacity = (prefs.getLong("keypadOpacityPct", 35).toInt() / 100f).coerceIn(0.1f, 0.9f),
         showControls = prefs.getBoolean("showControls", false),
     )
 
@@ -76,7 +83,9 @@ class SettingsStore(private val prefs: KeyValueStore) {
         prefs.putBoolean("autoWake", s.autoWake)
         prefs.putBoolean("minuteAlert", s.minuteAlert)
         prefs.putLong("alertSeconds", s.alertSeconds.toLong())
-        prefs.putBoolean("gridInput", s.gridInput)
+        prefs.putBoolean("numberEntry", s.numberEntry)
+        prefs.putBoolean("keypadVisible", s.keypadVisible)
+        prefs.putLong("keypadOpacityPct", (s.keypadOpacity * 100).toInt().toLong())
         prefs.putBoolean("showControls", s.showControls)
     }
 }

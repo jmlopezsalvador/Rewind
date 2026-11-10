@@ -7,8 +7,8 @@ import kotlin.math.min
 /** Tiempo por paso de minuto (SPEC 5; valores propuestos, ver Q4). */
 enum class AnimationSpeed(val stepMs: Long) { SLOW(1000), REGULAR(500), FAST(200) }
 
-/** Cómo se dispara el efecto (SPEC 7). La tecla de volumen llegará más adelante. */
-enum class Trigger { TAP, TAP_VIBRATE, PROXIMITY }
+/** Cómo se dispara el efecto (SPEC 7). VOLUME solo existe en Android (ver `platformSupportsVolumeKeys`). */
+enum class Trigger { TAP, TAP_VIBRATE, PROXIMITY, VOLUME }
 
 data class PerformanceConfig(
     val direction: Direction = Direction.BACKWARDS,
