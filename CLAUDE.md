@@ -4,7 +4,7 @@ App móvil para **Android y iOS** con un único código en Kotlin Multiplatform 
 El usuario habla español: responde y comenta el código en español.
 
 > **Estado:** esqueleto KMP creado y compilando en Android (`com.rewind`, nombre provisional **Rewind**). La fuente de
-> verdad funcional es **`SPEC.md`**. iOS aún no se ha compilado nunca.
+> verdad funcional es **`SPEC.md`**. iOS compila en GitHub Actions desde el 2026-11-10 (run 42820525163, `Rewind-ios-sin-firmar`), pero **nunca se ha probado en un iPhone** ni se han pasado los tests en el simulador (opción `tests` del workflow).
 
 ## Reglas para Claude
 - **Ignorar por completo la carpeta `ignore/`** (vídeos y material suelto del usuario): no leerla, no listarla, no
@@ -73,6 +73,11 @@ real. No toca el reloj del sistema. Gestos ocultos: 2 dedos ↓ = Settings, 2 de
 2. Commit y subida a la rama de iOS (aparte de `main`).
 3. **Preguntar antes de lanzar Actions** y acumular mejoras: `gh workflow run ios.yml --ref <rama>`.
 4. Descargar el `.ipa` e instalarlo con Sideloadly (Apple ID gratis; caduca a los 7 días; activar Modo desarrollador en el iPhone).
+
+## Lecciones de la primera compilación de iOS
+- `gradlew` debe estar en git con permiso de ejecución (`git update-index --chmod=+x gradlew`): desde Windows se guarda sin él y en el Mac de Actions da `Permission denied`.
+- `Platform.ios.kt` lleva `@file:OptIn(ExperimentalForeignApi::class)`: las llamadas de archivos/cinterop de Kotlin/Native lo exigen.
+- El `.ipa` descargado va a `data/ios_build/` (carpeta local, no se versiona). Instalación: Sideloadly/AltStore (ver `ARQUITECTURA.md` §6).
 
 ## Pendiente
 - Recibir las especificaciones de la app y rellenar "Qué hace la app".
