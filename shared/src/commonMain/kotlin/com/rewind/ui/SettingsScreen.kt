@@ -50,13 +50,22 @@ fun SettingsScreen(
     val pickDragged = rememberImagePicker(onDraggedPicked)
     var s by remember { mutableStateOf(initial) }
     var minutesText by remember { mutableStateOf(initial.extraMinutes.toString()) }
+    var showInstructions by remember { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+
+    // Las instrucciones se muestran aquí dentro (no como otra pantalla) para no perder los cambios sin guardar.
+    if (showInstructions) {
+        InstructionsScreen(onClose = { showInstructions = false })
+        return
+    }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()
-            .verticalScroll(rememberScrollState()).padding(16.dp),
+            .verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Ajustes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+        OutlinedButton({ showInstructions = true }, Modifier.fillMaxWidth()) { Text("Instrucciones") }
 
         Section("Pantalla de bloqueo (las imágenes se guardan al elegirlas)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

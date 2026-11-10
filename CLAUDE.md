@@ -16,6 +16,11 @@ El usuario habla español: responde y comenta el código en español.
 - **Antes de lanzar el workflow de iOS en GitHub Actions, preguntar siempre al usuario** (cuesta cuota de macOS; se acumulan mejoras).
 - No inventar funcionalidad: esperar a las especificaciones del usuario antes de diseñar pantallas o lógica.
 
+## Instrucciones para el usuario (mantener al día)
+- Página «Instrucciones» (Ajustes → Instrucciones, `InstructionsScreen`) con el contenido en `ui/InstructionsContent.kt` (`INSTRUCTIONS`):
+  documentación de uso en el orden en que se aprende, en español claro y de cara al mago. **Al añadir o cambiar una función de la app,
+  actualizar la sección correspondiente (o añadir una nueva en su sitio) en la misma tarea.** Solo documentar lo que ya funciona.
+
 ## Qué hace la app
 Simulador de reloj de pantalla de bloqueo para magia (detalle en `SPEC.md`). Muestra a pantalla completa una réplica de la
 pantalla de bloqueo del móvil con un reloj falso (`hora real ± N min`, sincronizado con el cambio de minuto real). Con un
