@@ -44,7 +44,22 @@ data class DisplayConfig(
     val dateLook: TextLook = TextLook(size = 0.017f, weight = 400, align = TextAlignment.START),
     val dateFormat: DateFormat = DateFormat.EN_SHORT,
     val blend: BlendConfig = BlendConfig(),
+    /** Reloj apilado en dos líneas (horas encima de minutos), como el de la pantalla de bloqueo de Pixel. */
+    val timeStacked: Boolean = false,
 ) {
+    /** Cambia entre reloj de una línea y apilado, con una caja y un tamaño de partida razonables para cada modo. */
+    fun withStacked(stacked: Boolean): DisplayConfig =
+        if (stacked == timeStacked) this
+        else if (stacked) copy(
+            timeStacked = true,
+            timeBox = BoxRect(0.15f, 0.30f, 0.7f, 0.40f),
+            timeLook = timeLook.copy(size = STACKED_SIZE, weight = 200),
+        ) else copy(
+            timeStacked = false,
+            timeBox = DEFAULT_TIME_BOX,
+            timeLook = timeLook.copy(size = DEFAULT_TIME_SIZE, weight = 300),
+        )
+
     /** Serialización compacta (una sola cadena) para guardarla en [com.rewind.ui.KeyValueStore]. */
     fun encode(): String {
         val v = mutableListOf<String>()
@@ -56,17 +71,23 @@ data class DisplayConfig(
         box(timeBox); look(timeLook); box(dateBox); look(dateLook)
         v += dateFormat.ordinal.toString()
         v += listOf(blend.brightness, blend.contrast, blend.saturation, blend.overall).map { it.toString() }
-        return "v1;" + v.joinToString(";")
+        v += if (timeStacked) "1" else "0"
+        return "v2;" + v.joinToString(";")
     }
 
     companion object {
         private const val FIELDS = 4 + 6 + 4 + 6 + 1 + 4
+        const val STACKED_SIZE = 0.22f
+        const val DEFAULT_TIME_SIZE = 0.075f
+        val DEFAULT_TIME_BOX = BoxRect(0.1f, 0.10f, 0.8f, 0.12f)
 
         /** null si la cadena no es válida (versión distinta, campos que faltan o valores corruptos). */
         fun decode(s: String?): DisplayConfig? {
             if (s == null) return null
             val parts = s.split(";")
-            if (parts.size != FIELDS + 1 || parts[0] != "v1") return null
+            // v1 (sin reloj apilado) sigue siendo legible; v2 añade el campo final.
+            val ok = (parts[0] == "v1" && parts.size == FIELDS + 1) || (parts[0] == "v2" && parts.size == FIELDS + 2)
+            if (!ok) return null
             val p = parts.drop(1)
             var i = 0
             fun f(): Float? = p[i++].toFloatOrNull()
@@ -89,9 +110,11 @@ data class DisplayConfig(
             val df = DateFormat.entries.getOrNull(n() ?: return null) ?: return null
             val b = f(); val c = f(); val sat = f(); val o = f()
             if (b == null || c == null || sat == null || o == null) return null
+            val stacked = if (parts[0] == "v2") p[i] == "1" else false
             return DisplayConfig(
                 timeBox, timeLook, dateBox, dateLook, df,
                 BlendConfig(b.coerceIn(-1f, 1f), c.coerceIn(0f, 3f), sat.coerceIn(0f, 3f), o.coerceIn(0f, 1f)),
+                stacked,
             )
         }
     }

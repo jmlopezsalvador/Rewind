@@ -99,7 +99,13 @@ fun DisplayEditorScreen(
                 Switch(showOriginal, { showOriginal = it })
             }
             when (tab) {
-                Tab.TIME -> LookControls(cfg.timeLook) { cfg = cfg.copy(timeLook = it) }
+                Tab.TIME -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Reloj apilado (2 líneas)", Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
+                        Switch(cfg.timeStacked, { cfg = cfg.withStacked(it) })
+                    }
+                    LookControls(cfg.timeLook) { cfg = cfg.copy(timeLook = it) }
+                }
                 Tab.DATE -> {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         DateFormat.entries.forEach { f ->
@@ -179,7 +185,7 @@ private fun androidx.compose.foundation.layout.BoxScope.BoxesOverlay(
 
 @Composable
 private fun LookControls(look: TextLook, onChange: (TextLook) -> Unit) {
-    LabeledSlider("Tamaño", look.size, 0.008f, 0.15f) { onChange(look.copy(size = it)) }
+    LabeledSlider("Tamaño", look.size, 0.008f, 0.30f) { onChange(look.copy(size = it)) }
     LabeledSlider("Grosor (${look.weight})", look.weight / 100f, 1f, 9f, steps = 7) { onChange(look.copy(weight = (it.toInt() * 100).coerceIn(100, 900))) }
     LabeledSlider("Ancho / espaciado", look.spacing, -0.1f, 0.3f) { onChange(look.copy(spacing = it)) }
     LabeledSlider("Opacidad", look.opacity, 0.1f, 1f) { onChange(look.copy(opacity = it)) }

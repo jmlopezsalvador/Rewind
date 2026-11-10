@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import com.rewind.display.BlendConfig
 import com.rewind.display.BoxRect
@@ -62,7 +64,7 @@ fun LockScreenView(
             }
         }
         if (!showOriginal) {
-            BoxText(display.timeBox, display.timeLook, timeText, w, h)
+            BoxText(display.timeBox, display.timeLook, timeText, w, h, stacked = display.timeStacked)
             BoxText(display.dateBox, display.dateLook, dateText, w, h)
         }
         overlay(w, h)
@@ -85,7 +87,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPatch(
 }
 
 @Composable
-private fun BoxText(rect: BoxRect, look: TextLook, text: String, w: Float, h: Float) {
+private fun BoxText(rect: BoxRect, look: TextLook, text: String, w: Float, h: Float, stacked: Boolean = false) {
     val density = LocalDensity.current
     val alignment = when (look.align) {
         TextAlignment.START -> Alignment.CenterStart
@@ -98,14 +100,23 @@ private fun BoxText(rect: BoxRect, look: TextLook, text: String, w: Float, h: Fl
             .size(with(density) { (rect.w * w).toDp() }, with(density) { (rect.h * h).toDp() }),
         contentAlignment = alignment,
     ) {
+        // Apilado: "12:42" → "12" encima de "42", con interlineado apretado como en Pixel.
+        val shown = if (stacked) text.replace(":", "\n") else text
+        val fontPx = look.size * h
         Text(
-            text,
+            shown,
+            lineHeight = if (stacked) with(density) { (fontPx * 0.77f).toSp() } else TextUnit.Unspecified,
+            textAlign = when (look.align) {
+                TextAlignment.START -> TextAlign.Start
+                TextAlignment.CENTER -> TextAlign.Center
+                TextAlignment.END -> TextAlign.End
+            },
             color = Color(0xFF000000.toInt() or look.color).copy(alpha = look.opacity),
             fontSize = with(density) { (look.size * h).toSp() },
             fontWeight = FontWeight(look.weight),
             letterSpacing = look.spacing.em,
             softWrap = false,
-            maxLines = 1,
+            maxLines = if (stacked) 2 else 1,
             modifier = Modifier.wrapContentSize(align = alignment, unbounded = true),
         )
     }

@@ -16,8 +16,22 @@ class DisplayConfigTest {
             timeLook = TextLook(0.08f, 200, 0.05f, 0.9f, 0x112233, TextAlignment.END),
             dateFormat = DateFormat.ES_LONG,
             blend = BlendConfig(0.1f, 1.2f, 0.8f, 0.7f),
+            timeStacked = true,
         )
         assertEquals(cfg, DisplayConfig.decode(cfg.encode()))
+    }
+
+    @Test fun decodeStillReadsV1() {
+        val v1 = DisplayConfig().encode().replace("v2;", "v1;").removeSuffix(";0")
+        assertEquals(DisplayConfig(), DisplayConfig.decode(v1))
+    }
+
+    @Test fun stackedPresetAndBack() {
+        val stacked = DisplayConfig().withStacked(true)
+        assertTrue(stacked.timeStacked)
+        assertEquals(DisplayConfig.STACKED_SIZE, stacked.timeLook.size)
+        assertEquals(DisplayConfig().timeLook.size, stacked.withStacked(false).timeLook.size)
+        assertEquals(DisplayConfig.DEFAULT_TIME_BOX, stacked.withStacked(false).timeBox)
     }
 
     @Test fun decodeRejectsGarbage() {
