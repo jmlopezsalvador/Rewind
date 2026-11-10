@@ -126,7 +126,7 @@ fun SettingsScreen(
             ) { Text("Guardar") }
         }
         Text(
-            "Gestos en la pantalla principal: 2 dedos ↓ = ajustes · 2 dedos ↑ = reiniciar",
+            "Pantalla principal: 2 dedos ↓ (o pulsación larga arriba-derecha) = ajustes · 2 dedos ↑ (o pulsación larga arriba-izquierda) = reiniciar",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground,
         )
     }

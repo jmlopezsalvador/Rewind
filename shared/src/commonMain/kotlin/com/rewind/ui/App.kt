@@ -87,6 +87,11 @@ fun PerformanceScreen(settings: AppSettings, screenshot: ImageBitmap?, onOpenSet
                 detectRewindGestures(
                     onTap = { performance = performance.trigger(source.now()) },
                     onTwoFingerSwipe = { up -> if (up) performance = performance.reset() else onOpenSettings() },
+                    // Alternativa para el emulador: pulsación larga arriba a la derecha = ajustes, arriba a la izquierda = reset.
+                    onLongPress = { col, row ->
+                        if (row == 0 && col == 2) onOpenSettings()
+                        else if (row == 0 && col == 0) performance = performance.reset()
+                    },
                 )
             },
         contentAlignment = Alignment.TopCenter,
