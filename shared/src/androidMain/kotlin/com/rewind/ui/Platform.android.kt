@@ -1,11 +1,36 @@
 package com.rewind.ui
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
+private fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+/** Modo inmersivo total (sin barras; reaparecen con un deslizamiento del borde) y pantalla siempre encendida. */
 @Composable
 actual fun SystemBarsEffect(dark: Boolean) {
-    // Pendiente: modo inmersivo total (ocultar barras) y pantalla siempre encendida.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller?.hide(WindowInsetsCompat.Type.systemBars())
+        view.keepScreenOn = true
+        onDispose {
+            view.keepScreenOn = false
+            controller?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 }
 
 class SharedPrefsStore(context: Context) : KeyValueStore {
