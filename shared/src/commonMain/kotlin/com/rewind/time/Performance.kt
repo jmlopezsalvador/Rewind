@@ -2,10 +2,15 @@ package com.rewind.time
 
 import kotlinx.datetime.Instant
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Tiempo por paso de minuto (SPEC 5; valores propuestos, ver Q4). */
 enum class AnimationSpeed(val stepMs: Long) { SLOW(1000), REGULAR(500), FAST(200) }
+
+/** Aspecto de la pantalla "apagada" (Always On): negra del todo, o atenuada y desenfocada como un móvil bloqueado. */
+enum class AodStyle { BLACK, DIMMED }
 
 /** Cómo se dispara el efecto (SPEC 7). VOLUME solo existe en Android (ver `platformSupportsVolumeKeys`). */
 enum class Trigger { TAP, TAP_VIBRATE, PROXIMITY, VOLUME }
@@ -20,6 +25,10 @@ data class PerformanceConfig(
     val alwaysOn: Boolean = false,
     /** Con [alwaysOn]: la pantalla se "enciende" al empezar el retardo. Sin él, se enciende al empezar la animación. */
     val autoWake: Boolean = false,
+    /** Aspecto de la pantalla mientras está "apagada". */
+    val aodStyle: AodStyle = AodStyle.BLACK,
+    /** Con [AodStyle.DIMMED]: segundos que la pantalla se queda despierta tras tocarla antes de volver a atenuarse. */
+    val awakeSeconds: Int = 5,
 )
 
 /**
@@ -35,6 +44,8 @@ enum class Phase { ARMED, DELAY, ANIMATING, SYNCED_HOLD }
 data class Performance(
     val config: PerformanceConfig,
     val triggeredAt: Instant? = null,
+    /** Último toque que despertó la pantalla atenuada (solo con [AodStyle.DIMMED]). */
+    val touchedAt: Instant? = null,
 ) {
     /** Desplazamiento inicial en minutos con signo (Atrás = +N). */
     val startOffset: Int get() = offsetMinutes(config.direction, config.extraMinutes)
@@ -56,7 +67,49 @@ data class Performance(
         if (triggeredAt != null) this else copy(config = config.copy(extraMinutes = n.coerceIn(1, 999)))
 
     /** Vuelve a la espera (2 dedos arriba): el offset se recalcula y se cancela cualquier animación. */
-    fun reset(): Performance = copy(triggeredAt = null)
+    fun reset(): Performance = copy(triggeredAt = null, touchedAt = null)
+
+    private val dimmed: Boolean get() = config.alwaysOn && config.aodStyle == AodStyle.DIMMED
+
+    /** Enfoque debido solo al último toque: sube al tocar, se mantiene [PerformanceConfig.awakeSeconds] y vuelve a bajar. */
+    private fun touchFocusAt(now: Instant): Float {
+        val t = touchedAt ?: return 0f
+        val elapsed = (now - t).inWholeMilliseconds
+        val hold = config.awakeSeconds * 1000L
+        return when {
+            elapsed < 0 -> 0f
+            elapsed < WAKE_MS -> elapsed.toFloat() / WAKE_MS
+            elapsed < WAKE_MS + hold -> 1f
+            else -> (1f - (elapsed - WAKE_MS - hold).toFloat() / DIM_MS).coerceIn(0f, 1f)
+        }
+    }
+
+    /**
+     * Toque sobre la pantalla atenuada: la despierta (o prolonga el tiempo despierta). Mantiene la continuidad si el
+     * toque llega a mitad de un fundido. No hace nada si la pantalla no está en modo atenuado.
+     */
+    fun touch(now: Instant): Performance {
+        if (!dimmed) return this
+        val f = touchFocusAt(now)
+        return copy(touchedAt = now - (f * WAKE_MS).toLong().milliseconds)
+    }
+
+    /**
+     * Enfoque/brillo de la pantalla simulada (0 = apagada o atenuada del todo, 1 = normal). Con [AodStyle.DIMMED]
+     * se combina el despertar por disparo ([wakeFractionAt]) con el despertar por toque.
+     */
+    fun focusAt(now: Instant): Float {
+        val fromTrigger = wakeFractionAt(now)
+        return if (dimmed) max(fromTrigger, touchFocusAt(now)) else fromTrigger
+    }
+
+    /** Milisegundos hasta que la pantalla despierta por un toque empiece a atenuarse otra vez (null si no aplica). */
+    fun msUntilDimStarts(now: Instant): Long? {
+        val t = touchedAt ?: return null
+        val end = WAKE_MS + config.awakeSeconds * 1000L
+        val elapsed = (now - t).inWholeMilliseconds
+        return if (elapsed < end) (end - elapsed).coerceAtLeast(0L) else null
+    }
 
     fun phaseAt(now: Instant): Phase {
         val t0 = triggeredAt ?: return Phase.ARMED
@@ -102,5 +155,8 @@ data class Performance(
 
         /** Duración del fundido de encendido de la pantalla. */
         const val WAKE_MS = 400L
+
+        /** Duración del fundido de vuelta a la atenuación. */
+        const val DIM_MS = 600L
     }
 }

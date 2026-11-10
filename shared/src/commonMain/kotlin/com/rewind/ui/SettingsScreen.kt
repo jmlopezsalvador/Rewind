@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rewind.time.AnimationSpeed
+import com.rewind.time.AodStyle
 import com.rewind.time.Direction
 import com.rewind.time.TimeFormat
 import com.rewind.time.Trigger
@@ -52,11 +53,17 @@ fun SettingsScreen(
     var s by remember { mutableStateOf(initial) }
     var minutesText by remember { mutableStateOf(initial.extraMinutes.toString()) }
     var showInstructions by remember { mutableStateOf(false) }
+    var showCredits by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
 
     // Las instrucciones se muestran aquí dentro (no como otra pantalla) para no perder los cambios sin guardar.
     if (showInstructions) {
         InstructionsScreen(onClose = { showInstructions = false })
+        return
+    }
+
+    if (showCredits) {
+        CreditsScreen(onClose = { showCredits = false })
         return
     }
 
@@ -66,7 +73,10 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Ajustes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
-        OutlinedButton({ showInstructions = true }, Modifier.fillMaxWidth()) { Text("Instrucciones") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton({ showInstructions = true }, Modifier.weight(1f)) { Text("Instrucciones") }
+            OutlinedButton({ showCredits = true }, Modifier.weight(1f)) { Text("Créditos") }
+        }
 
         Section("Pantalla de bloqueo (las imágenes se guardan al elegirlas)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -193,6 +203,42 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (s.alwaysOn) 1f else 0.4f),
             )
             Switch(s.autoWake, { s = s.copy(autoWake = it) }, enabled = s.alwaysOn)
+        }
+        if (s.alwaysOn) {
+            Section("Aspecto de la pantalla apagada") {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(s.aodStyle == AodStyle.BLACK, { s = s.copy(aodStyle = AodStyle.BLACK) }, { Text("Negra") })
+                    FilterChip(s.aodStyle == AodStyle.DIMMED, { s = s.copy(aodStyle = AodStyle.DIMMED) }, { Text("Atenuada y desenfocada") })
+                }
+            }
+            if (s.aodStyle == AodStyle.DIMMED) {
+                Section("Brillo de la pantalla atenuada (${(s.dimLevel * 100).toInt()} %)") {
+                    Slider(
+                        value = s.dimLevel,
+                        onValueChange = { s = s.copy(dimLevel = it.coerceIn(0.1f, 0.9f)) },
+                        valueRange = 0.1f..0.9f,
+                    )
+                }
+                Section("Desenfoque del fondo (${s.dimBlur})") {
+                    Slider(
+                        value = s.dimBlur.toFloat(),
+                        onValueChange = { s = s.copy(dimBlur = it.toInt().coerceIn(0, 30)) },
+                        valueRange = 0f..30f, steps = 29,
+                    )
+                }
+                Section("Se queda despierta tras tocarla (${s.awakeSeconds} s)") {
+                    Slider(
+                        value = s.awakeSeconds.toFloat(),
+                        onValueChange = { s = s.copy(awakeSeconds = it.toInt().coerceIn(3, 30)) },
+                        valueRange = 3f..30f, steps = 26,
+                    )
+                }
+                Text(
+                    "Con la pantalla atenuada, el primer toque la despierta (sin disparar el efecto) y pasados unos segundos vuelve a atenuarse. " +
+                        "El desenfoque necesita Android 12 o posterior.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                )
+            }
         }
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

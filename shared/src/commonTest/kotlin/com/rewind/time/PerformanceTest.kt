@@ -158,3 +158,65 @@ class NumberEntryTest {
         assertEquals(1, Performance(PerformanceConfig()).withMinutes(0).config.extraMinutes)
     }
 }
+
+class DimmedAodTest {
+    private fun at(s: String) = Instant.parse(s)
+    private val t0 = at("2026-01-01T10:00:00Z")
+    private val cfg = PerformanceConfig(alwaysOn = true, aodStyle = AodStyle.DIMMED, awakeSeconds = 5)
+
+    @Test fun dimmedByDefaultAndTouchWakesItWithFade() {
+        val p = Performance(cfg)
+        assertEquals(0f, p.focusAt(t0))
+        val touched = p.touch(t0)
+        assertEquals(0.5f, touched.focusAt(at("2026-01-01T10:00:00.200Z")), 1e-4f)
+        assertEquals(1f, touched.focusAt(at("2026-01-01T10:00:01Z")))
+    }
+
+    @Test fun staysAwakeForConfiguredSecondsThenDimsAgain() {
+        val p = Performance(cfg).touch(t0)
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:05.300Z")))     // 0,4 s de subida + 5 s despierta = 5,4 s
+        assertEquals(0.5f, p.focusAt(at("2026-01-01T10:00:05.700Z")), 1e-4f) // a mitad de la bajada (0,6 s)
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:06.100Z")))
+    }
+
+    @Test fun anotherTouchExtendsTheAwakeTime() {
+        val p = Performance(cfg).touch(t0).touch(at("2026-01-01T10:00:04Z"))
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:09Z")))   // sin el segundo toque ya estaría bajando
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:10.500Z")))
+    }
+
+    @Test fun touchDuringFadeOutContinuesFromCurrentLevel() {
+        val p = Performance(cfg).touch(t0)
+        val midFade = at("2026-01-01T10:00:05.700Z") // foco 0,5 bajando
+        val again = p.touch(midFade)
+        assertEquals(0.5f, again.focusAt(midFade), 1e-3f) // sin salto
+        assertEquals(1f, again.focusAt(at("2026-01-01T10:00:06.200Z")))
+    }
+
+    @Test fun touchDoesNothingWithBlackStyleOrWithoutAlwaysOn() {
+        val black = Performance(cfg.copy(aodStyle = AodStyle.BLACK))
+        assertEquals(black, black.touch(t0))
+        val off = Performance(PerformanceConfig())
+        assertEquals(off, off.touch(t0))
+        assertEquals(1f, off.focusAt(t0))
+    }
+
+    @Test fun triggerWithAutoWakeBrightensEvenWithoutTouch() {
+        val p = Performance(cfg.copy(autoWake = true)).trigger(t0)
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:01Z")))
+    }
+
+    @Test fun resetDimsAgainAndClearsTouch() {
+        val p = Performance(cfg).touch(t0).reset()
+        assertEquals(null, p.touchedAt)
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:02Z")))
+    }
+
+    @Test fun msUntilDimStarts() {
+        val p = Performance(cfg).touch(t0)
+        assertEquals(5_400L, p.msUntilDimStarts(t0))
+        assertEquals(1_400L, p.msUntilDimStarts(at("2026-01-01T10:00:04Z")))
+        assertEquals(null, p.msUntilDimStarts(at("2026-01-01T10:00:06Z")))
+        assertEquals(null, Performance(cfg).msUntilDimStarts(t0))
+    }
+}

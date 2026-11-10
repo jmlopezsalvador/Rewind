@@ -1,6 +1,7 @@
 package com.rewind.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -20,7 +23,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
@@ -36,6 +41,8 @@ import kotlin.math.roundToInt
  * Réplica de la pantalla de bloqueo (SPEC 4.1): capas A (base) → parche de B recortado a las cajas de hora y fecha
  * (con la mezcla aplicada) → texto dinámico. Lo usan la Performance Screen y el editor, así se ven idénticas.
  * Con [showOriginal] solo se ve la captura A (para comparar con el render).
+ * [dim] (0..1) oscurece todo con negro y [blurRadius] desenfoca solo el fondo (capturas), no el texto: así se simula el
+ * móvil bloqueado y atenuado. El desenfoque solo se aplica en Android 12 o posterior y en iOS.
  * [overlay] recibe el ancho y el alto en píxeles y se dibuja encima (el editor pinta ahí las cajas).
  */
 @Composable
@@ -47,12 +54,18 @@ fun LockScreenView(
     dateText: String,
     modifier: Modifier = Modifier,
     showOriginal: Boolean = false,
+    dim: Float = 0f,
+    blurRadius: Dp = 0.dp,
     overlay: @Composable BoxScope.(width: Float, height: Float) -> Unit = { _, _ -> },
 ) {
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(
+            Modifier.fillMaxSize().then(
+                if (blurRadius > 0.dp) Modifier.blur(blurRadius, BlurredEdgeTreatment.Rectangle) else Modifier,
+            ),
+        ) {
             drawImage(
                 imageA, IntOffset.Zero, IntSize(imageA.width, imageA.height),
                 IntOffset.Zero, IntSize(size.width.roundToInt(), size.height.roundToInt()),
@@ -67,6 +80,7 @@ fun LockScreenView(
             BoxText(display.timeBox, display.timeLook, timeText, w, h, stacked = display.timeStacked)
             BoxText(display.dateBox, display.dateLook, dateText, w, h)
         }
+        if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim.coerceIn(0f, 1f))))
         overlay(w, h)
     }
 }

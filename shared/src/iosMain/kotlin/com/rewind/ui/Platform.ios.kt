@@ -43,7 +43,11 @@ import platform.posix.memcpy
 
 @Composable
 actual fun SystemBarsEffect(dark: Boolean) {
-    // Lo gestiona SwiftUI (.preferredColorScheme / statusBarHidden).
+    // Barra de estado e indicador de inicio: los oculta SwiftUI (ver ContentView.swift). Aquí: la pantalla no se apaga sola.
+    DisposableEffect(Unit) {
+        UIApplication.sharedApplication.idleTimerDisabled = true
+        onDispose { UIApplication.sharedApplication.idleTimerDisabled = false }
+    }
 }
 
 class UserDefaultsStore : KeyValueStore {

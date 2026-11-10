@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.rewind.time.AodStyle
 import com.rewind.time.NumberEntry
 import com.rewind.time.Performance
 import com.rewind.time.Phase
@@ -142,7 +143,7 @@ fun PerformanceScreen(
             val shown = performance.displayAt(now).local(TimeZone.currentSystemDefault())
             timeText = formatTime(shown, settings.timeFormat)
             dateText = formatDate(shown, settings.display.dateFormat) // la fecha también cambia al cruzar medianoche
-            wake = performance.wakeFractionAt(now)
+            wake = performance.focusAt(now)
             alertOn = settings.minuteAlert && isMinuteAlertActive(now, settings.alertSeconds)
             when (performance.phaseAt(now)) {
                 Phase.ANIMATING -> withFrameMillis { }
@@ -150,6 +151,8 @@ fun PerformanceScreen(
                 else -> {
                     var wait = millisToNextMinute(now)
                     if (settings.minuteAlert && !alertOn) wait = minOf(wait, millisToMinuteAlert(now, settings.alertSeconds).coerceAtLeast(1L))
+                    // pantalla atenuada despierta por un toque: despertar al empezar a atenuarse otra vez
+                    performance.msUntilDimStarts(now)?.let { wait = minOf(wait, it.coerceAtLeast(1L)) }
                     // con la pantalla "encendiéndose" hace falta animar fotogramas
                     delay(if (wake in 0.001f..0.999f) 16L else wait)
                 }
@@ -173,8 +176,15 @@ fun PerformanceScreen(
                     } else {
                         entry = next
                     }
-                } else if (settings.trigger == Trigger.TAP || settings.trigger == Trigger.TAP_VIBRATE) {
-                    fire.value()
+                } else {
+                    val now = source.now()
+                    // Pantalla atenuada: el primer toque solo la despierta (no dispara); ya despierta, cada toque prolonga el tiempo.
+                    var awake = true
+                    if (settings.alwaysOn && settings.aodStyle == AodStyle.DIMMED && performance.triggeredAt == null) {
+                        awake = performance.focusAt(now) >= 0.5f
+                        performance = performance.touch(now)
+                    }
+                    if (awake && (settings.trigger == Trigger.TAP || settings.trigger == Trigger.TAP_VIBRATE)) fire.value()
                 }
             },
             onTwoFingerSwipe = { up -> if (entry == null) { if (up) resetAll() else onOpenSettings() } },
@@ -210,7 +220,16 @@ fun PerformanceScreen(
     } else {
         val glow = remember(screenshot) { if (bottomLuminance(screenshot) > 0.5f) Color.Black else Color.White }
         Box(Modifier.fillMaxSize().background(Color.Black).then(gestures)) {
-            if (wake > 0f) {
+            if (settings.alwaysOn && settings.aodStyle == AodStyle.DIMMED) {
+                // Como un móvil bloqueado y atenuado: fondo desenfocado y más oscuro; al despertar vuelve a la normalidad.
+                val brightness = settings.dimLevel + (1f - settings.dimLevel) * wake
+                LockScreenView(
+                    screenshot, dragged, settings.display, timeText, dateText,
+                    modifier = Modifier.fillMaxSize(),
+                    dim = 1f - brightness,
+                    blurRadius = (settings.dimBlur * (1f - wake)).dp,
+                )
+            } else if (wake > 0f) {
                 LockScreenView(
                     screenshot, dragged, settings.display, timeText, dateText,
                     modifier = Modifier.fillMaxSize().graphicsLayer {

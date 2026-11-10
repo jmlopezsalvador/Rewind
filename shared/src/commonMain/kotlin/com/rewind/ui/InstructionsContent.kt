@@ -85,12 +85,19 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
         },
     ),
     InstructionSection(
-        "5. Simular el móvil apagado",
+        "5. Simular el móvil apagado o bloqueado",
         listOf(
-            "Con «Simular pantalla apagada (Always On)» la pantalla se ve negra, como un móvil apagado o bloqueado, hasta que disparas.",
+            "Activa «Simular pantalla apagada (Always On)» en Ajustes. Hasta que disparas, la pantalla no se ve normal. " +
+                "Eliges el aspecto con «Aspecto de la pantalla apagada»:",
+            "• Negra: la pantalla se ve negra, como un móvil apagado.",
+            "• Atenuada y desenfocada: se ve tu pantalla de bloqueo más oscura y con el fondo desenfocado, como un móvil bloqueado " +
+                "con la pantalla en reposo. Si tocas la pantalla, se enfoca y recupera su aspecto normal (el toque solo la despierta, " +
+                "no dispara el efecto). Pasados unos segundos sin tocarla, vuelve a atenuarse. " +
+                "Puedes ajustar cuánto se atenúa (brillo), cuánto se desenfoca el fondo y cuántos segundos se queda despierta. " +
+                "El desenfoque necesita Android 12 o posterior; en versiones anteriores solo se atenúa.",
             "Con «Encender sola al disparar (Auto Wake)» la pantalla se enciende con un fundido suave en el momento del disparo. " +
-                "Sin Auto Wake, la pantalla se enciende cuando empieza la animación.",
-            "Los controles ocultos (apartado 8) funcionan igual con la pantalla negra.",
+                "Sin Auto Wake, se enciende cuando empieza la animación.",
+            "Los controles ocultos (apartado 8) funcionan igual con la pantalla apagada o atenuada.",
         ),
     ),
     InstructionSection(
@@ -155,7 +162,7 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
             "• La hora final siempre es la hora real del momento: si el minuto real cambia durante la animación, el reloj termina en el minuto nuevo.",
             "• La barra de estado de tu captura (batería, cobertura, hora) está congelada, porque es una imagen. " +
                 "Si te importa, haz la captura con la barra de estado lo más neutra posible o tápala con la captura B.",
-            "• La pantalla se mantiene encendida mientras la app está abierta.",
+            "• La pantalla se mantiene encendida y sin barras mientras la app está abierta (en iPhone, con el indicador de inicio oculto).",
             "• Todo se guarda solo en tu móvil. La app no usa internet ni cuentas.",
             "• Ensaya siempre antes en las mismas condiciones en las que vayas a actuar.",
         ),

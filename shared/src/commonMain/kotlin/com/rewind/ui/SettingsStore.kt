@@ -3,6 +3,7 @@ package com.rewind.ui
 import com.rewind.time.Direction
 import com.rewind.display.DisplayConfig
 import com.rewind.time.AnimationSpeed
+import com.rewind.time.AodStyle
 import com.rewind.time.DateFormat
 import com.rewind.time.PerformanceConfig
 import com.rewind.time.TimeFormat
@@ -39,9 +40,17 @@ data class AppSettings(
     val keypadOpacity: Float = 0.35f,
     /** Dibuja encima de la pantalla principal la cuadrícula 3×3 con la función de cada casilla (ayuda). */
     val showControls: Boolean = false,
+    /** Aspecto de la pantalla "apagada" (Always On). */
+    val aodStyle: AodStyle = AodStyle.BLACK,
+    /** Brillo (0.1..0.9) de la pantalla atenuada respecto a la normal. */
+    val dimLevel: Float = 0.35f,
+    /** Desenfoque (0..30 dp) del fondo cuando está atenuada. En Android anterior a 12 no se aplica. */
+    val dimBlur: Int = 12,
+    /** Segundos que la pantalla atenuada se queda despierta tras tocarla. */
+    val awakeSeconds: Int = 5,
 ) {
     fun toConfig() = PerformanceConfig(
-        direction, extraMinutes, animate, delaySeconds * 1000L, speed, alwaysOn, alwaysOn && autoWake,
+        direction, extraMinutes, animate, delaySeconds * 1000L, speed, alwaysOn, alwaysOn && autoWake, aodStyle, awakeSeconds,
     )
 }
 
@@ -68,6 +77,10 @@ class SettingsStore(private val prefs: KeyValueStore) {
         keypadVisible = prefs.getBoolean("keypadVisible", false),
         keypadOpacity = (prefs.getLong("keypadOpacityPct", 35).toInt() / 100f).coerceIn(0.1f, 0.9f),
         showControls = prefs.getBoolean("showControls", false),
+        aodStyle = prefs.getString("aodStyle")?.let { runCatching { AodStyle.valueOf(it) }.getOrNull() } ?: AodStyle.BLACK,
+        dimLevel = (prefs.getLong("dimLevelPct", 35).toInt() / 100f).coerceIn(0.1f, 0.9f),
+        dimBlur = prefs.getLong("dimBlur", 12).toInt().coerceIn(0, 30),
+        awakeSeconds = prefs.getLong("awakeSeconds", 5).toInt().coerceIn(3, 30),
     )
 
     fun save(s: AppSettings) {
@@ -87,5 +100,9 @@ class SettingsStore(private val prefs: KeyValueStore) {
         prefs.putBoolean("keypadVisible", s.keypadVisible)
         prefs.putLong("keypadOpacityPct", (s.keypadOpacity * 100).toInt().toLong())
         prefs.putBoolean("showControls", s.showControls)
+        prefs.putString("aodStyle", s.aodStyle.name)
+        prefs.putLong("dimLevelPct", (s.dimLevel * 100).toInt().toLong())
+        prefs.putLong("dimBlur", s.dimBlur.toLong())
+        prefs.putLong("awakeSeconds", s.awakeSeconds.toLong())
     }
 }
