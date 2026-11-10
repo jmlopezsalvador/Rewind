@@ -1,0 +1,19 @@
+package com.rewind.ui
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+
+@Composable
+actual fun SystemBarsEffect(dark: Boolean) {
+    // Pendiente: modo inmersivo total (ocultar barras) y pantalla siempre encendida.
+}
+
+class SharedPrefsStore(context: Context) : KeyValueStore {
+    private val p = context.getSharedPreferences("rewind", Context.MODE_PRIVATE)
+    override fun getString(key: String): String? = p.getString(key, null)
+    override fun getBoolean(key: String, default: Boolean) = p.getBoolean(key, default)
+    override fun getLong(key: String, default: Long) = p.getLong(key, default)
+    override fun putString(key: String, value: String) = p.edit().putString(key, value).apply()
+    override fun putBoolean(key: String, value: Boolean) = p.edit().putBoolean(key, value).apply()
+    override fun putLong(key: String, value: Long) = p.edit().putLong(key, value).apply()
+}

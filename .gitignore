@@ -1,0 +1,12 @@
+local.properties
+build/
+.gradle/
+*.iml
+.idea/
+# iOS: el proyecto de Xcode se genera con XcodeGen en CI
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+.kotlin/
+# Material suelto del usuario (ignorado por Claude y por git)
+ignore/
