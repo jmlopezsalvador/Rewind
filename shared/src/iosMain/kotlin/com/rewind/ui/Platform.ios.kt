@@ -12,6 +12,9 @@ import org.jetbrains.skia.Image
 import platform.Foundation.NSData
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSLocale
+import platform.Foundation.currentLocale
+import platform.Foundation.languageCode
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSUserDomainMask
@@ -97,3 +100,5 @@ actual fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit {
         }
     }
 }
+
+actual fun platformLanguage(): String = NSLocale.currentLocale.languageCode

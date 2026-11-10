@@ -19,3 +19,6 @@ expect fun decodeImage(bytes: ByteArray): androidx.compose.ui.graphics.ImageBitm
 /** Devuelve una función que abre la galería del sistema; al elegir una foto llama a [onPicked] con sus bytes. */
 @Composable
 expect fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit
+
+/** Código de idioma del sistema ("es", "en"...), para elegir el formato de fecha por defecto. */
+expect fun platformLanguage(): String

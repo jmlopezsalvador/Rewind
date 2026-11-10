@@ -67,3 +67,5 @@ actual fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit {
     }
     return { launcher.launch("image/*") }
 }
+
+actual fun platformLanguage(): String = java.util.Locale.getDefault().language

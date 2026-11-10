@@ -43,6 +43,7 @@ fun SettingsScreen(
     onScreenshotPicked: (ByteArray) -> Unit,
     onDraggedPicked: (ByteArray) -> Unit,
     onClearImages: () -> Unit,
+    onOpenDisplayEditor: (AppSettings) -> Unit,
 ) {
     val pickScreenshot = rememberImagePicker(onScreenshotPicked)
     val pickDragged = rememberImagePicker(onDraggedPicked)
@@ -65,7 +66,12 @@ fun SettingsScreen(
                     Text(if (hasDragged) "Sin reloj B ✓" else "Elegir sin reloj B")
                 }
             }
-            if (hasScreenshot || hasDragged) OutlinedButton(onClearImages) { Text("Quitar imágenes") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({ onOpenDisplayEditor(s) }, enabled = hasScreenshot && minutesText.toIntOrNull() in 1..999) {
+                    Text("Editar hora, fecha y mezcla")
+                }
+                if (hasScreenshot || hasDragged) OutlinedButton(onClearImages) { Text("Quitar imágenes") }
+            }
         }
 
         Section("Dirección") {
