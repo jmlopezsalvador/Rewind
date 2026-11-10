@@ -67,3 +67,44 @@ class PerformanceTest {
         assertEquals(Phase.ARMED, p.reset().phaseAt(at("2026-01-01T10:00:30Z")))
     }
 }
+
+class WakeAndAlertTest {
+    private fun at(s: String) = Instant.parse(s)
+
+    @Test fun withoutAlwaysOnScreenIsAlwaysOn() {
+        assertEquals(1f, Performance(PerformanceConfig()).wakeFractionAt(at("2026-01-01T10:00:00Z")))
+    }
+
+    @Test fun alwaysOnIsOffUntilTrigger() {
+        val p = Performance(PerformanceConfig(alwaysOn = true, autoWake = true))
+        assertEquals(0f, p.wakeFractionAt(at("2026-01-01T10:00:10Z")))
+    }
+
+    @Test fun autoWakeLightsAtTriggerWithFade() {
+        val p = Performance(PerformanceConfig(alwaysOn = true, autoWake = true)).trigger(at("2026-01-01T10:00:00Z"))
+        assertEquals(0f, p.wakeFractionAt(at("2026-01-01T10:00:00Z")))
+        assertEquals(0.5f, p.wakeFractionAt(at("2026-01-01T10:00:00.200Z")), 1e-4f)
+        assertEquals(1f, p.wakeFractionAt(at("2026-01-01T10:00:00.500Z")))
+    }
+
+    @Test fun withoutAutoWakeLightsWhenAnimationStarts() {
+        val p = Performance(PerformanceConfig(alwaysOn = true, autoWake = false, delayMs = 4_000))
+            .trigger(at("2026-01-01T10:00:00Z"))
+        assertEquals(0f, p.wakeFractionAt(at("2026-01-01T10:00:03.900Z")))
+        assertEquals(1f, p.wakeFractionAt(at("2026-01-01T10:00:04.500Z")))
+    }
+
+    @Test fun resetTurnsScreenOffAgain() {
+        val p = Performance(PerformanceConfig(alwaysOn = true, autoWake = true)).trigger(at("2026-01-01T10:00:00Z"))
+        assertEquals(0f, p.reset().wakeFractionAt(at("2026-01-01T10:00:09Z")))
+    }
+
+    @Test fun minuteAlertWindow() {
+        assertEquals(false, isMinuteAlertActive(at("2026-01-01T10:00:49.9Z"), 10))
+        assertEquals(true, isMinuteAlertActive(at("2026-01-01T10:00:50Z"), 10))
+        assertEquals(true, isMinuteAlertActive(at("2026-01-01T10:00:59Z"), 10))
+        assertEquals(false, isMinuteAlertActive(at("2026-01-01T10:01:00Z"), 10)) // minuto nuevo: faltan 60 s
+        assertEquals(5_000L, millisToMinuteAlert(at("2026-01-01T10:00:45Z"), 10))
+        assertEquals(0L, millisToMinuteAlert(at("2026-01-01T10:00:55Z"), 10))
+    }
+}

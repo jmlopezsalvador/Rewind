@@ -22,3 +22,15 @@ expect fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit
 
 /** Código de idioma del sistema ("es", "en"...), para elegir el formato de fecha por defecto. */
 expect fun platformLanguage(): String
+
+/** Devuelve una función que da una vibración corta de confirmación (háptica en iOS). */
+@Composable
+expect fun rememberVibrate(): () -> Unit
+
+/**
+ * Mientras [enabled], escucha el sensor de proximidad y llama a [onNear] cuando se tapa (pasar la mano).
+ * Solo cuenta tras haberlo visto destapado, para no disparar si el móvil arranca tapado (bolsillo).
+ * El sensor se registra solo mientras [enabled] (batería).
+ */
+@Composable
+expect fun ProximityEffect(enabled: Boolean, onNear: () -> Unit)

@@ -7,12 +7,19 @@ import kotlin.math.min
 /** Tiempo por paso de minuto (SPEC 5; valores propuestos, ver Q4). */
 enum class AnimationSpeed(val stepMs: Long) { SLOW(1000), REGULAR(500), FAST(200) }
 
+/** Cómo se dispara el efecto (SPEC 7). La tecla de volumen llegará más adelante. */
+enum class Trigger { TAP, TAP_VIBRATE, PROXIMITY }
+
 data class PerformanceConfig(
     val direction: Direction = Direction.BACKWARDS,
     val extraMinutes: Int = 3,
     val animate: Boolean = true,
     val delayMs: Long = 4_000,
     val speed: AnimationSpeed = AnimationSpeed.REGULAR,
+    /** Simula el móvil bloqueado y con la pantalla apagada hasta que se activa el efecto. */
+    val alwaysOn: Boolean = false,
+    /** Con [alwaysOn]: la pantalla se "enciende" al empezar el retardo. Sin él, se enciende al empezar la animación. */
+    val autoWake: Boolean = false,
 )
 
 /**
@@ -71,10 +78,25 @@ data class Performance(
         }
     }
 
+    /**
+     * Cuánto está "encendida" la pantalla simulada (0 = apagada, 1 = encendida del todo) para animar el encendido
+     * con un fundido. Sin Always On siempre vale 1.
+     */
+    fun wakeFractionAt(now: Instant): Float {
+        if (!config.alwaysOn) return 1f
+        val t0 = triggeredAt ?: return 0f
+        val wakeStart = if (config.autoWake) 0L else config.delayMs
+        val elapsed = (now - t0).inWholeMilliseconds - wakeStart
+        return (elapsed.toFloat() / WAKE_MS).coerceIn(0f, 1f)
+    }
+
     /** Instante (a minuto completo) que muestra la pantalla falsa. */
     fun displayAt(now: Instant): Instant = displayTime(now, offsetAt(now))
 
     companion object {
         const val MAX_ANIMATION_MS = 20_000L
+
+        /** Duración del fundido de encendido de la pantalla. */
+        const val WAKE_MS = 400L
     }
 }

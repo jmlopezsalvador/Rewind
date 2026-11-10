@@ -49,3 +49,10 @@ fun formatTime(t: LocalDateTime, format: TimeFormat): String {
         }
     }
 }
+
+/** Alerta de minuto (SPEC CU-08): true cuando faltan [seconds] s o menos para el cambio de minuto real. */
+fun isMinuteAlertActive(now: Instant, seconds: Int): Boolean = millisToNextMinute(now) <= seconds * 1000L
+
+/** Milisegundos hasta que la alerta de minuto se active (0 si ya lo está). */
+fun millisToMinuteAlert(now: Instant, seconds: Int): Long =
+    (millisToNextMinute(now) - seconds * 1000L).coerceAtLeast(0L)

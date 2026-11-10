@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.rewind.time.AnimationSpeed
 import com.rewind.time.Direction
 import com.rewind.time.TimeFormat
+import com.rewind.time.Trigger
 
 /** Ajustes de la actuación (SPEC 5, fase 1). Display Settings (capturas, editor, blend) llegará aparte. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,6 +121,39 @@ fun SettingsScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(AnimationSpeed.SLOW to "Lenta", AnimationSpeed.REGULAR to "Normal", AnimationSpeed.FAST to "Rápida")
                     .forEach { (v, label) -> FilterChip(s.speed == v, { s = s.copy(speed = v) }, { Text(label) }) }
+            }
+        }
+
+        Section("Disparador") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(Trigger.TAP to "Toque", Trigger.TAP_VIBRATE to "Toque + vibración", Trigger.PROXIMITY to "Proximidad")
+                    .forEach { (v, label) -> FilterChip(s.trigger == v, { s = s.copy(trigger = v) }, { Text(label) }) }
+            }
+        }
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Simular pantalla apagada (Always On)", Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
+            Switch(s.alwaysOn, { s = s.copy(alwaysOn = it) })
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Encender sola al disparar (Auto Wake)", Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (s.alwaysOn) 1f else 0.4f),
+            )
+            Switch(s.autoWake, { s = s.copy(autoWake = it) }, enabled = s.alwaysOn)
+        }
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Alerta de cambio de minuto (brillo en el borde)", Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
+            Switch(s.minuteAlert, { s = s.copy(minuteAlert = it) })
+        }
+        if (s.minuteAlert) {
+            Section("Avisar cuando falten ${s.alertSeconds} s") {
+                Slider(
+                    value = s.alertSeconds.toFloat(),
+                    onValueChange = { s = s.copy(alertSeconds = it.toInt().coerceIn(3, 30)) },
+                    valueRange = 3f..30f, steps = 26,
+                )
             }
         }
 

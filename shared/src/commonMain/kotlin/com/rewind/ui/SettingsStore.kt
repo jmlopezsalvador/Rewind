@@ -6,6 +6,7 @@ import com.rewind.time.AnimationSpeed
 import com.rewind.time.DateFormat
 import com.rewind.time.PerformanceConfig
 import com.rewind.time.TimeFormat
+import com.rewind.time.Trigger
 
 interface KeyValueStore {
     fun getString(key: String): String?
@@ -25,8 +26,15 @@ data class AppSettings(
     val delaySeconds: Int = 4,
     val speed: AnimationSpeed = AnimationSpeed.REGULAR,
     val display: DisplayConfig = DisplayConfig(),
+    val trigger: Trigger = Trigger.TAP,
+    val alwaysOn: Boolean = false,
+    val autoWake: Boolean = false,
+    val minuteAlert: Boolean = false,
+    val alertSeconds: Int = 10,
 ) {
-    fun toConfig() = PerformanceConfig(direction, extraMinutes, animate, delaySeconds * 1000L, speed)
+    fun toConfig() = PerformanceConfig(
+        direction, extraMinutes, animate, delaySeconds * 1000L, speed, alwaysOn, alwaysOn && autoWake,
+    )
 }
 
 class SettingsStore(private val prefs: KeyValueStore) {
@@ -42,6 +50,11 @@ class SettingsStore(private val prefs: KeyValueStore) {
             ?: AnimationSpeed.REGULAR,
         display = DisplayConfig.decode(prefs.getString("display"))
             ?: DisplayConfig(dateFormat = if (platformLanguage() == "es") DateFormat.ES_LONG else DateFormat.EN_SHORT),
+        trigger = prefs.getString("trigger")?.let { runCatching { Trigger.valueOf(it) }.getOrNull() } ?: Trigger.TAP,
+        alwaysOn = prefs.getBoolean("alwaysOn", false),
+        autoWake = prefs.getBoolean("autoWake", false),
+        minuteAlert = prefs.getBoolean("minuteAlert", false),
+        alertSeconds = prefs.getLong("alertSeconds", 10).toInt().coerceIn(3, 30),
     )
 
     fun save(s: AppSettings) {
@@ -52,5 +65,10 @@ class SettingsStore(private val prefs: KeyValueStore) {
         prefs.putLong("delaySeconds", s.delaySeconds.toLong())
         prefs.putString("speed", s.speed.name)
         prefs.putString("display", s.display.encode())
+        prefs.putString("trigger", s.trigger.name)
+        prefs.putBoolean("alwaysOn", s.alwaysOn)
+        prefs.putBoolean("autoWake", s.autoWake)
+        prefs.putBoolean("minuteAlert", s.minuteAlert)
+        prefs.putLong("alertSeconds", s.alertSeconds.toLong())
     }
 }

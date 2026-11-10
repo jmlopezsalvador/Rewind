@@ -1,6 +1,7 @@
 package com.rewind.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
@@ -16,12 +17,18 @@ import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
 import platform.Foundation.dataWithContentsOfFile
 import platform.Foundation.writeToFile
 import platform.UIKit.UIApplication
+import platform.UIKit.UIDevice
+import platform.UIKit.UIDeviceProximityStateDidChangeNotification
+import platform.UIKit.UIImpactFeedbackGenerator
+import platform.UIKit.UIImpactFeedbackStyle
 import platform.UIKit.UIImage
 import platform.UIKit.UIImagePNGRepresentation
 import platform.UIKit.UIImagePickerController
@@ -102,3 +109,30 @@ actual fun rememberImagePicker(onPicked: (ByteArray) -> Unit): () -> Unit {
 }
 
 actual fun platformLanguage(): String = NSLocale.currentLocale.languageCode
+
+@Composable
+actual fun rememberVibrate(): () -> Unit = remember {
+    {
+        UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium).impactOccurred()
+    }
+}
+
+@Composable
+actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit) {
+    val current = rememberUpdatedState(onNear)
+    DisposableEffect(enabled) {
+        if (!enabled) return@DisposableEffect onDispose { }
+        val device = UIDevice.currentDevice
+        device.proximityMonitoringEnabled = true // ojo: mientras está tapado, iOS apaga la pantalla
+        var sawFar = !device.proximityState
+        val observer = NSNotificationCenter.defaultCenter.addObserverForName(
+            name = UIDeviceProximityStateDidChangeNotification, `object` = null, queue = NSOperationQueue.mainQueue,
+        ) { _ ->
+            if (!device.proximityState) sawFar = true else if (sawFar) { sawFar = false; current.value() }
+        }
+        onDispose {
+            NSNotificationCenter.defaultCenter.removeObserver(observer)
+            device.proximityMonitoringEnabled = false
+        }
+    }
+}
