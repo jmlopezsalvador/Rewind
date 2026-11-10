@@ -179,6 +179,9 @@ fun PerformanceScreen(
                 color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
             )
+            if (settings.showControls) {
+                ControlsOverlay(settings.gridInput, grid.count, performance.config.extraMinutes, settings.trigger)
+            }
         }
     } else {
         val glow = remember(screenshot) { if (bottomLuminance(screenshot) > 0.5f) Color.Black else Color.White }
@@ -199,6 +202,9 @@ fun PerformanceScreen(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(72.dp)
                         .background(Brush.verticalGradient(listOf(Color.Transparent, glow.copy(alpha = 0.35f)))),
                 )
+            }
+            if (settings.showControls) {
+                ControlsOverlay(settings.gridInput, grid.count, performance.config.extraMinutes, settings.trigger)
             }
         }
     }

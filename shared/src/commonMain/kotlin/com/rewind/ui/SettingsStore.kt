@@ -33,6 +33,8 @@ data class AppSettings(
     val alertSeconds: Int = 10,
     /** Permite fijar N en directo pulsando varias veces la casilla izquierda-centro de la pantalla. */
     val gridInput: Boolean = false,
+    /** Dibuja encima de la pantalla principal la cuadrícula 3×3 con la función de cada casilla (ayuda). */
+    val showControls: Boolean = false,
 ) {
     fun toConfig() = PerformanceConfig(
         direction, extraMinutes, animate, delaySeconds * 1000L, speed, alwaysOn, alwaysOn && autoWake,
@@ -58,6 +60,7 @@ class SettingsStore(private val prefs: KeyValueStore) {
         minuteAlert = prefs.getBoolean("minuteAlert", false),
         alertSeconds = prefs.getLong("alertSeconds", 10).toInt().coerceIn(3, 30),
         gridInput = prefs.getBoolean("gridInput", false),
+        showControls = prefs.getBoolean("showControls", false),
     )
 
     fun save(s: AppSettings) {
@@ -74,5 +77,6 @@ class SettingsStore(private val prefs: KeyValueStore) {
         prefs.putBoolean("minuteAlert", s.minuteAlert)
         prefs.putLong("alertSeconds", s.alertSeconds.toLong())
         prefs.putBoolean("gridInput", s.gridInput)
+        prefs.putBoolean("showControls", s.showControls)
     }
 }

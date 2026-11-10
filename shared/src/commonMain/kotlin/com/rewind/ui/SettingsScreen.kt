@@ -106,6 +106,17 @@ fun SettingsScreen(
             Switch(s.gridInput, { s = s.copy(gridInput = it) })
         }
 
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Ver controles de pantalla", color = MaterialTheme.colorScheme.onBackground)
+                Text(
+                    "Superpone la cuadrícula 3×3 con lo que hace cada casilla (reiniciar, ajustes, minutos...). Para ensayar; apágalo al actuar.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                )
+            }
+            Switch(s.showControls, { s = s.copy(showControls = it) })
+        }
+
         Section("Formato de hora") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
