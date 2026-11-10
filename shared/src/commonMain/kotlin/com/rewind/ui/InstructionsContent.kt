@@ -93,6 +93,9 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
             "• Atenuada y desenfocada: se ve tu pantalla de bloqueo más oscura y con el fondo desenfocado, como un móvil bloqueado " +
                 "con la pantalla en reposo. Si tocas la pantalla, se enfoca y recupera su aspecto normal (el toque solo la despierta, " +
                 "no dispara el efecto). Pasados unos segundos sin tocarla, vuelve a atenuarse. " +
+                "Mientras el efecto está en marcha (retardo y animación) la pantalla no se atenúa; cuando termina, vuelve a atenuarse " +
+                "pasados esos segundos sin tocarla, y un toque la despierta de nuevo. Al reiniciar tampoco se atenúa de golpe: " +
+                "espera esos mismos segundos sin que la toques. " +
                 "Puedes ajustar cuánto se atenúa (brillo), cuánto se desenfoca el fondo y cuántos segundos se queda despierta. " +
                 "El desenfoque necesita Android 12 o posterior; en versiones anteriores solo se atenúa.",
             "Con «Encender sola al disparar (Auto Wake)» la pantalla se enciende con un fundido suave en el momento del disparo. " +
@@ -116,9 +119,9 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
             "Actívalo en Ajustes con «Registrar número en directo» y pulsa Guardar. Ahí mismo eliges si el teclado es " +
                 "visible o invisible y, si es visible, cuánta transparencia tiene.",
             "• Entrar: mantén pulsada la casilla inferior izquierda de la pantalla (apartado 8). El móvil vibra: el modo de registro está activo.",
-            "• Teclear: la pantalla se convierte en un teclado de 3 columnas por 4 filas. Las tres filas de arriba son los números " +
-                "1 2 3 / 4 5 6 / 7 8 9 y la fila de abajo, entera, es el 0. Se teclean siempre dos cifras: para el 7, toca 0 y luego 7; " +
-                "para el 17, toca 1 y luego 7.",
+            "• Teclear: la mitad inferior de la pantalla se convierte en un teclado de 3 columnas por 4 filas (la mitad de arriba no responde). " +
+                "Las tres primeras filas son los números 1 2 3 / 4 5 6 / 7 8 9 y la fila de abajo, entera, es el 0. " +
+                "Se teclean siempre dos cifras: para el 7, toca 0 y luego 7; para el 17, toca 1 y luego 7.",
             "• Terminar: al teclear la segunda cifra el modo se cierra solo, el número queda registrado y el móvil vuelve a vibrar. " +
                 "El reloj pasa a mostrar la hora real más esos minutos.",
             "• Con el teclado invisible la pantalla no cambia: la cuadrícula existe pero no se ve, así que conviene ensayar dónde está cada zona " +

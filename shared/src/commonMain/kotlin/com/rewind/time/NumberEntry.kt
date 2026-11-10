@@ -29,11 +29,16 @@ data class NumberEntry(val digits: List<Int> = emptyList(), val lastInputAt: Ins
 }
 
 /**
- * Cifra que corresponde a un punto de la pantalla (fracciones 0..1) en el teclado: 3 columnas, 4 filas.
- * Las tres primeras filas son 1–9 y la fila de abajo entera es el 0 (zona grande, fácil de acertar a ciegas).
+ * Cifra que corresponde a un punto de la pantalla (fracciones 0..1) en el teclado, que ocupa solo la MITAD INFERIOR de la
+ * pantalla: 3 columnas × 4 filas. Las tres primeras filas son 1–9 y la fila de abajo entera es el 0 (zona grande, fácil
+ * de acertar a ciegas). Devuelve null si el punto está en la mitad superior (no hay tecla: esa parte no responde).
  */
-fun keypadDigitAt(fx: Float, fy: Float): Int {
+fun keypadDigitAt(fx: Float, fy: Float): Int? {
+    if (fy < KEYPAD_TOP) return null
     val col = (fx * 3).toInt().coerceIn(0, 2)
-    val row = (fy * 4).toInt().coerceIn(0, 3)
+    val row = (((fy - KEYPAD_TOP) / (1f - KEYPAD_TOP)) * 4).toInt().coerceIn(0, 3)
     return if (row == 3) 0 else row * 3 + col + 1
 }
+
+/** Fracción de la altura de pantalla donde empieza el teclado (la mitad inferior). */
+const val KEYPAD_TOP = 0.5f

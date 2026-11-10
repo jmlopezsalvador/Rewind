@@ -63,8 +63,8 @@ class PerformanceTest {
     @Test fun secondTriggerIgnoredAndResetRestores() {
         val p = Performance(base).trigger(at("2026-01-01T10:00:00Z"))
         assertEquals(p, p.trigger(at("2026-01-01T10:00:02Z")))
-        assertEquals("10:03", p.reset().shown("2026-01-01T10:00:30Z"))
-        assertEquals(Phase.ARMED, p.reset().phaseAt(at("2026-01-01T10:00:30Z")))
+        assertEquals("10:03", p.reset(at("2026-01-01T10:00:30Z")).shown("2026-01-01T10:00:30Z"))
+        assertEquals(Phase.ARMED, p.reset(at("2026-01-01T10:00:30Z")).phaseAt(at("2026-01-01T10:00:30Z")))
     }
 }
 
@@ -96,7 +96,7 @@ class WakeAndAlertTest {
 
     @Test fun resetTurnsScreenOffAgain() {
         val p = Performance(PerformanceConfig(alwaysOn = true, autoWake = true)).trigger(at("2026-01-01T10:00:00Z"))
-        assertEquals(0f, p.reset().wakeFractionAt(at("2026-01-01T10:00:09Z")))
+        assertEquals(0f, p.reset(at("2026-01-01T10:00:09Z")).wakeFractionAt(at("2026-01-01T10:00:09Z")))
     }
 
     @Test fun minuteAlertWindow() {
@@ -135,17 +135,22 @@ class NumberEntryTest {
         assertEquals(0L, e.remainingMs(at("2026-01-01T10:00:14Z")))
     }
 
-    @Test fun keypadLayoutIsPhoneLikeWithZeroRow() {
-        assertEquals(1, keypadDigitAt(0.1f, 0.1f))
-        assertEquals(2, keypadDigitAt(0.5f, 0.1f))
-        assertEquals(3, keypadDigitAt(0.9f, 0.1f))
-        assertEquals(5, keypadDigitAt(0.5f, 0.4f))
-        assertEquals(7, keypadDigitAt(0.1f, 0.6f))
-        assertEquals(9, keypadDigitAt(0.9f, 0.7f))
-        assertEquals(0, keypadDigitAt(0.1f, 0.9f))
+    @Test fun keypadOccupiesOnlyTheBottomHalf() {
+        // mitad superior: sin teclas
+        assertEquals(null, keypadDigitAt(0.5f, 0.1f))
+        assertEquals(null, keypadDigitAt(0.1f, 0.49f))
+        // mitad inferior: 4 filas (cada una 12,5 % de la pantalla) × 3 columnas
+        assertEquals(1, keypadDigitAt(0.1f, 0.51f))
+        assertEquals(2, keypadDigitAt(0.5f, 0.55f))
+        assertEquals(3, keypadDigitAt(0.9f, 0.60f))
+        assertEquals(4, keypadDigitAt(0.1f, 0.64f))
+        assertEquals(5, keypadDigitAt(0.5f, 0.69f))
+        assertEquals(7, keypadDigitAt(0.1f, 0.76f))
+        assertEquals(9, keypadDigitAt(0.9f, 0.80f))
+        assertEquals(0, keypadDigitAt(0.1f, 0.90f))   // fila de abajo entera = 0
         assertEquals(0, keypadDigitAt(0.5f, 0.99f))
-        assertEquals(0, keypadDigitAt(1.0f, 1.0f)) // bordes: no se salen del teclado
-        assertEquals(1, keypadDigitAt(0f, 0f))
+        assertEquals(0, keypadDigitAt(1.0f, 1.0f))     // bordes: no se salen del teclado
+        assertEquals(1, keypadDigitAt(0f, 0.5f))
     }
 
     @Test fun withMinutesChangesOffsetOnlyWhileArmed() {
@@ -206,10 +211,70 @@ class DimmedAodTest {
         assertEquals(1f, p.focusAt(at("2026-01-01T10:00:01Z")))
     }
 
-    @Test fun resetDimsAgainAndClearsTouch() {
-        val p = Performance(cfg).touch(t0).reset()
-        assertEquals(null, p.touchedAt)
-        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:02Z")))
+    @Test fun resetKeepsTheScreenAwakeAndDimsOnlyAfterInactivity() {
+        val p = Performance(cfg).touch(t0)
+        val r = p.reset(at("2026-01-01T10:00:02Z"))             // reiniciar cuenta como actividad
+        assertEquals(null, r.triggeredAt)
+        assertEquals(1f, r.focusAt(at("2026-01-01T10:00:02Z")))
+        assertEquals(1f, r.focusAt(at("2026-01-01T10:00:06Z")))   // sigue despierta
+        assertEquals(1f, r.focusAt(at("2026-01-01T10:00:07Z")))   // 5 s de calma justo cumplidos
+        assertEquals(0.5f, r.focusAt(at("2026-01-01T10:00:07.300Z")), 1e-3f)
+        assertEquals(0f, r.focusAt(at("2026-01-01T10:00:08Z")))
+    }
+
+    @Test fun resetFromDimmedStateFadesInInsteadOfJumping() {
+        val r = Performance(cfg).reset(at("2026-01-01T10:00:00Z"))
+        assertEquals(0f, r.focusAt(at("2026-01-01T10:00:00Z")))
+        assertEquals(0.5f, r.focusAt(at("2026-01-01T10:00:00.200Z")), 1e-3f)
+        assertEquals(1f, r.focusAt(at("2026-01-01T10:00:00.500Z")))
+    }
+
+    @Test fun resetWithNewConfigDiscardsLiveMinutes() {
+        val live = Performance(cfg).withMinutes(42)
+        assertEquals(42, live.config.extraMinutes)
+        assertEquals(cfg.extraMinutes, live.reset(t0, cfg).config.extraMinutes)
+    }
+
+    @Test fun resetWithBlackStyleTurnsScreenOffAgain() {
+        val black = Performance(PerformanceConfig(alwaysOn = true, aodStyle = AodStyle.BLACK)).trigger(t0)
+        assertEquals(0f, black.reset(at("2026-01-01T10:00:09Z")).focusAt(at("2026-01-01T10:00:10Z")))
+    }
+
+    @Test fun staysAwakeWhileTheEffectRunsAndDimsAgainAfterItEnds() {
+        // despierta por un toque, dispara 1 s después. Efecto: retardo 4 s + animación 1,5 s (3 pasos de 0,5 s) = 5,5 s → termina en +6,5 s
+        val p = Performance(cfg).touch(t0).trigger(at("2026-01-01T10:00:01Z"))
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:03Z")))    // retardo
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:05.600Z"))) // el toque ya "caducaría", pero el efecto sigue: no se atenúa
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:06.400Z"))) // animación
+        assertEquals(Phase.SYNCED_HOLD, p.phaseAt(at("2026-01-01T10:00:06.600Z")))
+        // terminó en +6,5 s: despierta 5 s más (+0,4 s de partida) y vuelve a atenuarse
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:11.400Z")))
+        assertEquals(0.5f, p.focusAt(at("2026-01-01T10:00:11.800Z")), 1e-3f)
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:12.300Z")))
+    }
+
+    @Test fun touchAfterTheEffectWakesItAgainWithoutTriggering() {
+        val p = Performance(cfg).touch(t0).trigger(at("2026-01-01T10:00:01Z"))
+        val late = at("2026-01-01T10:00:20Z")
+        assertEquals(0f, p.focusAt(late))                              // ya atenuada
+        val touched = p.touch(late)
+        assertEquals(p.triggeredAt, touched.triggeredAt)
+        assertEquals(0.5f, touched.focusAt(at("2026-01-01T10:00:20.200Z")), 1e-3f)
+        assertEquals(1f, touched.focusAt(at("2026-01-01T10:00:21Z")))
+    }
+
+    @Test fun touchDuringTheEffectProlongsTheWakeAfterIt() {
+        val p = Performance(cfg).touch(t0).trigger(at("2026-01-01T10:00:01Z"))
+        val touched = p.touch(at("2026-01-01T10:00:09Z"))            // ya post-efecto, aún despierta
+        assertEquals(1f, touched.focusAt(at("2026-01-01T10:00:14Z")))  // sin el toque ya estaría atenuada
+    }
+
+    @Test fun notAwakeAtTriggerWithoutAutoWakeLightsWhenAnimationStarts() {
+        val p = Performance(cfg.copy(autoWake = false)).trigger(t0)      // atenuada, sin tocar
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:03.900Z")))
+        assertEquals(1f, p.focusAt(at("2026-01-01T10:00:04.500Z")))
+        // y tras terminar (4 s + 1,5 s) se vuelve a atenuar pasado el tiempo
+        assertEquals(0f, p.focusAt(at("2026-01-01T10:00:13Z")))
     }
 
     @Test fun msUntilDimStarts() {
@@ -218,5 +283,9 @@ class DimmedAodTest {
         assertEquals(1_400L, p.msUntilDimStarts(at("2026-01-01T10:00:04Z")))
         assertEquals(null, p.msUntilDimStarts(at("2026-01-01T10:00:06Z")))
         assertEquals(null, Performance(cfg).msUntilDimStarts(t0))
+        // tras el efecto también hay que despertar para atenuar
+        val fired = Performance(cfg).touch(t0).trigger(at("2026-01-01T10:00:01Z"))
+        assertEquals(null, fired.msUntilDimStarts(at("2026-01-01T10:00:03Z")))     // mientras corre el efecto
+        assertEquals(5_000L, fired.msUntilDimStarts(at("2026-01-01T10:00:06.500Z"))) // el efecto termina en +6,5 s; el ciclo parte 0,4 s antes
     }
 }

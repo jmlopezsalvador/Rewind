@@ -66,22 +66,57 @@ data class Performance(
     fun withMinutes(n: Int): Performance =
         if (triggeredAt != null) this else copy(config = config.copy(extraMinutes = n.coerceIn(1, 999)))
 
-    /** Vuelve a la espera (2 dedos arriba): el offset se recalcula y se cancela cualquier animación. */
-    fun reset(): Performance = copy(triggeredAt = null, touchedAt = null)
+    /**
+     * Vuelve a la espera (reiniciar): se cancela la animación y se recalcula el offset con [newConfig] (por defecto la
+     * actual; la interfaz pasa la de Ajustes para descartar el N registrado en directo). Con la pantalla atenuada,
+     * reiniciar cuenta como actividad: la pantalla no se atenúa de golpe, solo tras [PerformanceConfig.awakeSeconds]
+     * sin tocar (y mantiene el nivel de enfoque que tuviera, para no dar saltos).
+     */
+    fun reset(now: Instant, newConfig: PerformanceConfig = config): Performance {
+        val fresh = Performance(newConfig)
+        if (!dimmed || !fresh.dimmed) return fresh
+        return fresh.copy(touchedAt = now - (focusAt(now) * WAKE_MS).toLong().milliseconds)
+    }
 
     private val dimmed: Boolean get() = config.alwaysOn && config.aodStyle == AodStyle.DIMMED
 
-    /** Enfoque debido solo al último toque: sube al tocar, se mantiene [PerformanceConfig.awakeSeconds] y vuelve a bajar. */
-    private fun touchFocusAt(now: Instant): Float {
-        val t = touchedAt ?: return 0f
-        val elapsed = (now - t).inWholeMilliseconds
+    /** Instante en que terminan retardo y animación (empieza SYNCED_HOLD); null si aún no se ha disparado. */
+    private fun effectEnd(): Instant? = triggeredAt?.plus((config.delayMs + animationMs).milliseconds)
+
+    /**
+     * Enfoque en función del tiempo transcurrido desde el inicio de un ciclo "despierta": sube al empezar
+     * ([WAKE_MS]), se mantiene [PerformanceConfig.awakeSeconds] y vuelve a bajar ([DIM_MS]).
+     */
+    private fun cycleFocus(elapsedMs: Long): Float {
         val hold = config.awakeSeconds * 1000L
         return when {
-            elapsed < 0 -> 0f
-            elapsed < WAKE_MS -> elapsed.toFloat() / WAKE_MS
-            elapsed < WAKE_MS + hold -> 1f
-            else -> (1f - (elapsed - WAKE_MS - hold).toFloat() / DIM_MS).coerceIn(0f, 1f)
+            elapsedMs < 0 -> 0f
+            elapsedMs < WAKE_MS -> elapsedMs.toFloat() / WAKE_MS
+            elapsedMs < WAKE_MS + hold -> 1f
+            else -> (1f - (elapsedMs - WAKE_MS - hold).toFloat() / DIM_MS).coerceIn(0f, 1f)
         }
+    }
+
+    /** Enfoque debido solo al último toque. */
+    private fun touchFocusAt(now: Instant): Float = touchedAt?.let { cycleFocus((now - it).inWholeMilliseconds) } ?: 0f
+
+    /**
+     * Enfoque mientras corre el efecto (retardo y animación): si la pantalla ya estaba despierta al disparar, se queda
+     * despierta (no se atenúa mientras el reloj viaja); si no, se enciende con el disparo o al empezar la animación.
+     */
+    private fun effectFocusAt(now: Instant, t0: Instant): Float {
+        val awakeAtTrigger = touchedAt?.let { cycleFocus((t0 - it).inWholeMilliseconds) } ?: 0f
+        return if (awakeAtTrigger >= 0.5f) 1f else max(wakeFractionAt(now), touchFocusAt(now))
+    }
+
+    /**
+     * Inicio del ciclo "despierta" que rige una vez terminado el efecto: parte del nivel de enfoque con que acabó (sin
+     * saltos) y se adelanta si hay un toque posterior. Tras [PerformanceConfig.awakeSeconds] sin tocar, vuelve a atenuarse.
+     */
+    private fun postEffectCycleStart(end: Instant, t0: Instant): Instant {
+        val base = end - (effectFocusAt(end, t0) * WAKE_MS).toLong().milliseconds
+        val t = touchedAt
+        return if (t != null && t > base) t else base
     }
 
     /**
@@ -90,25 +125,36 @@ data class Performance(
      */
     fun touch(now: Instant): Performance {
         if (!dimmed) return this
-        val f = touchFocusAt(now)
-        return copy(touchedAt = now - (f * WAKE_MS).toLong().milliseconds)
+        return copy(touchedAt = now - (focusAt(now) * WAKE_MS).toLong().milliseconds)
     }
 
     /**
-     * Enfoque/brillo de la pantalla simulada (0 = apagada o atenuada del todo, 1 = normal). Con [AodStyle.DIMMED]
-     * se combina el despertar por disparo ([wakeFractionAt]) con el despertar por toque.
+     * Enfoque/brillo de la pantalla simulada (0 = apagada o atenuada del todo, 1 = normal). Con [AodStyle.DIMMED]:
+     * esperando el disparo, solo cuentan los toques; mientras corre el efecto, despierta; y al terminar vuelve a
+     * atenuarse pasados [PerformanceConfig.awakeSeconds] sin tocar.
      */
     fun focusAt(now: Instant): Float {
-        val fromTrigger = wakeFractionAt(now)
-        return if (dimmed) max(fromTrigger, touchFocusAt(now)) else fromTrigger
+        if (!dimmed) return wakeFractionAt(now)
+        val t0 = triggeredAt ?: return touchFocusAt(now)
+        val end = effectEnd()!!
+        if (now < end) return effectFocusAt(now, t0)
+        return cycleFocus((now - postEffectCycleStart(end, t0)).inWholeMilliseconds)
     }
 
-    /** Milisegundos hasta que la pantalla despierta por un toque empiece a atenuarse otra vez (null si no aplica). */
+    /** Milisegundos hasta que la pantalla despierta empiece a atenuarse (null si no aplica o ya está atenuándose). */
     fun msUntilDimStarts(now: Instant): Long? {
-        val t = touchedAt ?: return null
-        val end = WAKE_MS + config.awakeSeconds * 1000L
-        val elapsed = (now - t).inWholeMilliseconds
-        return if (elapsed < end) (end - elapsed).coerceAtLeast(0L) else null
+        if (!dimmed) return null
+        val t0 = triggeredAt
+        val start: Instant = if (t0 == null) {
+            touchedAt ?: return null
+        } else {
+            val end = effectEnd()!!
+            if (now < end) return null
+            postEffectCycleStart(end, t0)
+        }
+        val holdEnd = WAKE_MS + config.awakeSeconds * 1000L
+        val elapsed = (now - start).inWholeMilliseconds
+        return if (elapsed < holdEnd) (holdEnd - elapsed).coerceAtLeast(0L) else null
     }
 
     fun phaseAt(now: Instant): Phase {

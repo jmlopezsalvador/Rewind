@@ -161,26 +161,31 @@ fun PerformanceScreen(
     }
 
     // Reiniciar vuelve al N de Ajustes (se descarta el registrado en directo) y cierra el modo de registro.
-    val resetAll = { performance = Performance(settings.toConfig()); entry = null }
+    val resetAll = { performance = performance.reset(source.now(), settings.toConfig()); entry = null }
     val gestures = Modifier.pointerInput(Unit) {
         detectRewindGestures(
             onTap = { fx, fy ->
                 val e = entry
                 if (e != null) {
-                    // Modo de registro: solo responde el teclado. Tras la segunda cifra se cierra, se registra y vibra.
-                    val next = e.press(keypadDigitAt(fx, fy), source.now())
-                    if (next.isComplete) {
-                        entry = null
-                        if (next.value > 0) performance = performance.withMinutes(next.value) // 00 = sin cambio
-                        vibrate()
-                    } else {
-                        entry = next
+                    // Modo de registro: solo responde el teclado (mitad inferior). Tras la segunda cifra se cierra, se registra y vibra.
+                    val digit = keypadDigitAt(fx, fy)
+                    if (digit != null) {
+                        val next = e.press(digit, source.now())
+                        if (next.isComplete) {
+                            entry = null
+                            if (next.value > 0) performance = performance.withMinutes(next.value) // 00 = sin cambio
+                            vibrate()
+                        } else {
+                            entry = next
+                        }
                     }
                 } else {
                     val now = source.now()
                     // Pantalla atenuada: el primer toque solo la despierta (no dispara); ya despierta, cada toque prolonga el tiempo.
                     var awake = true
-                    if (settings.alwaysOn && settings.aodStyle == AodStyle.DIMMED && performance.triggeredAt == null) {
+                    val waitingOrDone = performance.triggeredAt == null || performance.phaseAt(now) == Phase.SYNCED_HOLD
+                    if (settings.alwaysOn && settings.aodStyle == AodStyle.DIMMED && waitingOrDone) {
+                        // también tras terminar el efecto: la pantalla vuelve a atenuarse sola y un toque la despierta
                         awake = performance.focusAt(now) >= 0.5f
                         performance = performance.touch(now)
                     }
