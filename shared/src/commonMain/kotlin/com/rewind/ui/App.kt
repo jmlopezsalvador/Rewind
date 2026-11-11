@@ -122,10 +122,11 @@ fun PerformanceScreen(
             if (settings.trigger == Trigger.TAP_VIBRATE) vibrate()
         }
     }
-    // El sensor solo está registrado mientras se espera el disparo (batería).
+    // El sensor se mantiene activo mientras esta pantalla está abierta con este disparador (no se apaga al disparar ni al
+    // reiniciar). El disparo solo cuenta en ARMED (lo garantiza `fire`) y se produce al RETIRAR la mano, no al ponerla.
     ProximityEffect(
-        enabled = settings.trigger == Trigger.PROXIMITY && performance.triggeredAt == null,
-        onNear = { fire.value() },
+        enabled = settings.trigger == Trigger.PROXIMITY,
+        onWave = { fire.value() },
         onStatus = { st ->
             if (st == ProximityStatus.NEAR && proximity != ProximityStatus.NEAR) nearCount++
             proximity = st

@@ -31,13 +31,14 @@ expect fun rememberVibrate(): () -> Unit
 enum class ProximityStatus { UNAVAILABLE, FAR, NEAR }
 
 /**
- * Mientras [enabled], vigila el sensor de proximidad y llama a [onNear] cuando se tapa (pasar la mano).
- * Solo cuenta tras haberlo visto destapado, para no disparar si el móvil arranca tapado (bolsillo).
- * El sensor solo está activo mientras [enabled] (batería). [onStatus] informa del estado actual del sensor
- * (no disponible / lejos / cerca) para poder ver en pantalla si responde.
+ * Mientras [enabled], vigila el sensor de proximidad y llama a [onWave] cuando se completa una pasada de mano, es decir,
+ * al RETIRAR la mano tras taparlo (ver `ProximityWave`). Mientras está tapado, el sistema apaga la pantalla.
+ * El sensor se mantiene activo todo el tiempo que [enabled] es true (no se apaga al disparar ni al reiniciar: en iOS,
+ * volver a activarlo dejaba el estado "pegado" en cerca). [onStatus] informa del estado actual del sensor
+ * (no disponible / lejos / cerca) para diagnosticar.
  */
 @Composable
-expect fun ProximityEffect(enabled: Boolean, onNear: () -> Unit, onStatus: (ProximityStatus) -> Unit = {})
+expect fun ProximityEffect(enabled: Boolean, onWave: () -> Unit, onStatus: (ProximityStatus) -> Unit = {})
 
 /** true si la plataforma permite usar las teclas de volumen como disparador (Android sí; iOS no ofrece forma fiable). */
 expect fun platformSupportsVolumeKeys(): Boolean

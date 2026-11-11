@@ -123,31 +123,28 @@ actual fun rememberVibrate(): () -> Unit = remember {
 }
 
 @Composable
-actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit, onStatus: (ProximityStatus) -> Unit) {
-    val current = rememberUpdatedState(onNear)
+actual fun ProximityEffect(enabled: Boolean, onWave: () -> Unit, onStatus: (ProximityStatus) -> Unit) {
+    val current = rememberUpdatedState(onWave)
     val status = rememberUpdatedState(onStatus)
-    // Se apaga la monitorización al salir (mientras está tapado, iOS apaga la pantalla).
+    // La monitorización solo se apaga al salir de esta pantalla (o si se cambia de disparador). NO al disparar ni al
+    // reiniciar: apagarla y volver a encenderla dejaba proximityState "pegado" en cerca hasta el siguiente cambio real.
     DisposableEffect(enabled) {
         onDispose { if (enabled) UIDevice.currentDevice.proximityMonitoringEnabled = false }
     }
-    // En vez de fiarse de la notificación del sistema (que podía no llegar si se activaba antes de que la app estuviera
-    // activa), se lee el estado del sensor unas 10 veces por segundo y se reafirma la monitorización.
+    // Se lee el estado del sensor unas 10 veces por segundo (no se fía de la notificación del sistema) y se reafirma
+    // la monitorización. El gesto se completa al retirar la mano (ver ProximityWave).
     LaunchedEffect(enabled) {
         if (!enabled) return@LaunchedEffect
         val device = UIDevice.currentDevice
-        var sawFar = false
-        var last: Boolean? = null
+        val wave = com.rewind.time.ProximityWave()
         while (true) {
             if (!device.proximityMonitoringEnabled) device.proximityMonitoringEnabled = true
             if (!device.proximityMonitoringEnabled) {
-                status.value(ProximityStatus.UNAVAILABLE) // el sistema la rechaza: este iPhone/iPad no tiene sensor
+                status.value(ProximityStatus.UNAVAILABLE) // el sistema la rechaza: este dispositivo no tiene sensor
             } else {
                 val near = device.proximityState
                 status.value(if (near) ProximityStatus.NEAR else ProximityStatus.FAR)
-                if (near != last) {
-                    if (!near) sawFar = true else if (sawFar) { sawFar = false; current.value() }
-                    last = near
-                }
+                if (wave.update(near)) current.value()
             }
             delay(100)
         }

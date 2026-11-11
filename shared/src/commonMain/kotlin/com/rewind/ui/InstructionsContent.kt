@@ -69,8 +69,11 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
             add("• Toque + vibración: igual, y el móvil vibra un instante para confirmarte que se ha disparado.")
             add(
                 "• Proximidad: pasas la mano sobre el sensor de proximidad (suele estar arriba, junto al altavoz). " +
-                    "El sensor solo está activo mientras esperas el disparo. Si el móvil arranca con el sensor tapado, no se dispara solo: " +
-                    "primero tiene que verlo destapado. En iPhone, mientras el sensor está tapado el sistema apaga la pantalla. " +
+                    "Mientras tienes la mano encima el sistema apaga la pantalla y todavía no pasa nada: el efecto se dispara " +
+                    "cuando RETIRAS la mano, y es entonces cuando empieza a contar el retardo. Si el móvil arranca con el sensor tapado, " +
+                    "no se dispara solo: primero tiene que verlo destapado. En iPhone, mientras el sensor está tapado el sistema apaga la pantalla. " +
+                    "El sensor se mantiene activo mientras la pantalla principal está abierta con este disparador; el disparo solo cuenta " +
+                    "cuando la app está esperando. " +
                     "Si no responde, activa «Ver controles de pantalla» (apartado 8): en la casilla central verás lo que lee el sensor " +
                     "(lejos, cerca, o «no disponible») y cuántas veces lo has tapado.",
             )

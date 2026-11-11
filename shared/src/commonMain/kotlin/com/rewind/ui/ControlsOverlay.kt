@@ -77,7 +77,7 @@ private fun cellInfo(
         when (trigger) {
             Trigger.TAP -> "toque en cualquier casilla libre"
             Trigger.TAP_VIBRATE -> "toque en cualquier casilla libre\n(y vibra)"
-            Trigger.PROXIMITY -> "sensor de proximidad (los toques no disparan)\n" + when (proximity) {
+            Trigger.PROXIMITY -> "sensor de proximidad: se dispara al RETIRAR la mano\n(los toques no disparan)\n" + when (proximity) {
                 ProximityStatus.UNAVAILABLE -> "SENSOR NO DISPONIBLE"
                 ProximityStatus.FAR -> "sensor: lejos · tapado $nearCount veces"
                 ProximityStatus.NEAR -> "sensor: CERCA · tapado $nearCount veces"
