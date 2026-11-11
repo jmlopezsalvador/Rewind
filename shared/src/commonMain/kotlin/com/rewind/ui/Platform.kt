@@ -27,13 +27,17 @@ expect fun platformLanguage(): String
 @Composable
 expect fun rememberVibrate(): () -> Unit
 
+/** Lo que informa el sensor de proximidad (para diagnosticar). */
+enum class ProximityStatus { UNAVAILABLE, FAR, NEAR }
+
 /**
- * Mientras [enabled], escucha el sensor de proximidad y llama a [onNear] cuando se tapa (pasar la mano).
+ * Mientras [enabled], vigila el sensor de proximidad y llama a [onNear] cuando se tapa (pasar la mano).
  * Solo cuenta tras haberlo visto destapado, para no disparar si el móvil arranca tapado (bolsillo).
- * El sensor se registra solo mientras [enabled] (batería).
+ * El sensor solo está activo mientras [enabled] (batería). [onStatus] informa del estado actual del sensor
+ * (no disponible / lejos / cerca) para poder ver en pantalla si responde.
  */
 @Composable
-expect fun ProximityEffect(enabled: Boolean, onNear: () -> Unit)
+expect fun ProximityEffect(enabled: Boolean, onNear: () -> Unit, onStatus: (ProximityStatus) -> Unit = {})
 
 /** true si la plataforma permite usar las teclas de volumen como disparador (Android sí; iOS no ofrece forma fiable). */
 expect fun platformSupportsVolumeKeys(): Boolean

@@ -111,6 +111,8 @@ fun PerformanceScreen(
     var wake by remember { mutableFloatStateOf(if (settings.alwaysOn) 0f else 1f) }
     var alertOn by remember { mutableStateOf(false) }
     var entry by remember(settings) { mutableStateOf<NumberEntry?>(null) } // modo de registro de número
+    var proximity by remember { mutableStateOf<ProximityStatus?>(null) }   // lo que lee el sensor (diagnóstico)
+    var nearCount by remember { mutableStateOf(0) }
 
     val vibrate = rememberVibrate()
     val fire = rememberUpdatedState {
@@ -124,6 +126,10 @@ fun PerformanceScreen(
     ProximityEffect(
         enabled = settings.trigger == Trigger.PROXIMITY && performance.triggeredAt == null,
         onNear = { fire.value() },
+        onStatus = { st ->
+            if (st == ProximityStatus.NEAR && proximity != ProximityStatus.NEAR) nearCount++
+            proximity = st
+        },
     )
     // Con el disparador de volumen, las teclas no tocan el volumen del sistema mientras se está en esta pantalla.
     VolumeKeyEffect(enabled = settings.trigger == Trigger.VOLUME, onPress = { fire.value() })
@@ -219,7 +225,7 @@ fun PerformanceScreen(
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
             )
             if (settings.showControls) {
-                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger)
+                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger, proximity, nearCount)
             }
         }
     } else {
@@ -252,7 +258,7 @@ fun PerformanceScreen(
                 )
             }
             if (settings.showControls) {
-                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger)
+                ControlsOverlay(settings.numberEntry, performance.config.extraMinutes, settings.trigger, proximity, nearCount)
             }
             val e = entry
             if (e != null && settings.keypadVisible) {

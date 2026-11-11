@@ -70,7 +70,9 @@ fun instructions(volumeKeys: Boolean): List<InstructionSection> = listOf(
             add(
                 "• Proximidad: pasas la mano sobre el sensor de proximidad (suele estar arriba, junto al altavoz). " +
                     "El sensor solo está activo mientras esperas el disparo. Si el móvil arranca con el sensor tapado, no se dispara solo: " +
-                    "primero tiene que verlo destapado. En iPhone, mientras el sensor está tapado el sistema apaga la pantalla.",
+                    "primero tiene que verlo destapado. En iPhone, mientras el sensor está tapado el sistema apaga la pantalla. " +
+                    "Si no responde, activa «Ver controles de pantalla» (apartado 8): en la casilla central verás lo que lee el sensor " +
+                    "(lejos, cerca, o «no disponible») y cuántas veces lo has tapado.",
             )
             if (volumeKeys) {
                 add(

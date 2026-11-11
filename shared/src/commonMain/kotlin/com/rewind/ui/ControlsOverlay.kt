@@ -27,13 +27,15 @@ fun ControlsOverlay(
     numberEntryEnabled: Boolean,
     minutes: Int,
     trigger: Trigger,
+    proximity: ProximityStatus? = null,
+    nearCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
         for (row in 0..2) {
             Row(Modifier.weight(1f)) {
                 for (col in 0..2) {
-                    val (title, detail, active) = cellInfo(col, row, numberEntryEnabled, minutes, trigger)
+                    val (title, detail, active) = cellInfo(col, row, numberEntryEnabled, minutes, trigger, proximity, nearCount)
                     Box(
                         Modifier.weight(1f).fillMaxSize()
                             .background(if (active) Color(0x40FFC107) else Color(0x14000000))
@@ -60,7 +62,9 @@ fun ControlsOverlay(
 
 private data class CellInfo(val title: String, val detail: String, val active: Boolean)
 
-private fun cellInfo(col: Int, row: Int, numberEntry: Boolean, minutes: Int, trigger: Trigger): CellInfo = when {
+private fun cellInfo(
+    col: Int, row: Int, numberEntry: Boolean, minutes: Int, trigger: Trigger, proximity: ProximityStatus?, nearCount: Int,
+): CellInfo = when {
     col == 0 && row == 0 -> CellInfo("Reiniciar", "pulsación larga", true)
     col == 2 && row == 0 -> CellInfo("Ajustes", "pulsación larga", true)
     col == 0 && row == 2 -> if (numberEntry) {
@@ -73,7 +77,12 @@ private fun cellInfo(col: Int, row: Int, numberEntry: Boolean, minutes: Int, tri
         when (trigger) {
             Trigger.TAP -> "toque en cualquier casilla libre"
             Trigger.TAP_VIBRATE -> "toque en cualquier casilla libre\n(y vibra)"
-            Trigger.PROXIMITY -> "sensor de proximidad\n(los toques no disparan)"
+            Trigger.PROXIMITY -> "sensor de proximidad (los toques no disparan)\n" + when (proximity) {
+                ProximityStatus.UNAVAILABLE -> "SENSOR NO DISPONIBLE"
+                ProximityStatus.FAR -> "sensor: lejos · tapado $nearCount veces"
+                ProximityStatus.NEAR -> "sensor: CERCA · tapado $nearCount veces"
+                null -> "sensor: sin lectura todavía"
+            }
             Trigger.VOLUME -> "tecla de volumen\n(los toques no disparan)"
         },
         false,

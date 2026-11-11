@@ -4,11 +4,13 @@ package com.rewind.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.delay
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import org.jetbrains.skia.Image
@@ -19,8 +21,6 @@ import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
-import platform.Foundation.NSNotificationCenter
-import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
@@ -28,7 +28,6 @@ import platform.Foundation.dataWithContentsOfFile
 import platform.Foundation.writeToFile
 import platform.UIKit.UIApplication
 import platform.UIKit.UIDevice
-import platform.UIKit.UIDeviceProximityStateDidChangeNotification
 import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle
 import platform.UIKit.UIImage
@@ -124,21 +123,33 @@ actual fun rememberVibrate(): () -> Unit = remember {
 }
 
 @Composable
-actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit) {
+actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit, onStatus: (ProximityStatus) -> Unit) {
     val current = rememberUpdatedState(onNear)
+    val status = rememberUpdatedState(onStatus)
+    // Se apaga la monitorización al salir (mientras está tapado, iOS apaga la pantalla).
     DisposableEffect(enabled) {
-        if (!enabled) return@DisposableEffect onDispose { }
+        onDispose { if (enabled) UIDevice.currentDevice.proximityMonitoringEnabled = false }
+    }
+    // En vez de fiarse de la notificación del sistema (que podía no llegar si se activaba antes de que la app estuviera
+    // activa), se lee el estado del sensor unas 10 veces por segundo y se reafirma la monitorización.
+    LaunchedEffect(enabled) {
+        if (!enabled) return@LaunchedEffect
         val device = UIDevice.currentDevice
-        device.proximityMonitoringEnabled = true // ojo: mientras está tapado, iOS apaga la pantalla
-        var sawFar = !device.proximityState
-        val observer = NSNotificationCenter.defaultCenter.addObserverForName(
-            name = UIDeviceProximityStateDidChangeNotification, `object` = null, queue = NSOperationQueue.mainQueue,
-        ) { _ ->
-            if (!device.proximityState) sawFar = true else if (sawFar) { sawFar = false; current.value() }
-        }
-        onDispose {
-            NSNotificationCenter.defaultCenter.removeObserver(observer)
-            device.proximityMonitoringEnabled = false
+        var sawFar = false
+        var last: Boolean? = null
+        while (true) {
+            if (!device.proximityMonitoringEnabled) device.proximityMonitoringEnabled = true
+            if (!device.proximityMonitoringEnabled) {
+                status.value(ProximityStatus.UNAVAILABLE) // el sistema la rechaza: este iPhone/iPad no tiene sensor
+            } else {
+                val near = device.proximityState
+                status.value(if (near) ProximityStatus.NEAR else ProximityStatus.FAR)
+                if (near != last) {
+                    if (!near) sawFar = true else if (sawFar) { sawFar = false; current.value() }
+                    last = near
+                }
+            }
+            delay(100)
         }
     }
 }

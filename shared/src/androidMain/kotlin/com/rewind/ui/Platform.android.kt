@@ -86,17 +86,23 @@ actual fun rememberVibrate(): () -> Unit {
 }
 
 @Composable
-actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit) {
+actual fun ProximityEffect(enabled: Boolean, onNear: () -> Unit, onStatus: (ProximityStatus) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val current = androidx.compose.runtime.rememberUpdatedState(onNear)
+    val status = androidx.compose.runtime.rememberUpdatedState(onStatus)
     DisposableEffect(enabled) {
         val manager = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
         val sensor = manager.getDefaultSensor(android.hardware.Sensor.TYPE_PROXIMITY)
-        if (!enabled || sensor == null) return@DisposableEffect onDispose { }
+        if (!enabled) return@DisposableEffect onDispose { }
+        if (sensor == null) {
+            status.value(ProximityStatus.UNAVAILABLE)
+            return@DisposableEffect onDispose { }
+        }
         var sawFar = false
         val listener = object : android.hardware.SensorEventListener {
             override fun onSensorChanged(event: android.hardware.SensorEvent) {
                 val near = event.values[0] < sensor.maximumRange
+                status.value(if (near) ProximityStatus.NEAR else ProximityStatus.FAR)
                 if (!near) sawFar = true else if (sawFar) { sawFar = false; current.value() }
             }
             override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
